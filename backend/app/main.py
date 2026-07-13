@@ -1,6 +1,7 @@
 from fastapi import FastAPI
-from app.routers import approvals, runs
+from app.routers import approvals, evidence, runs
 
 app = FastAPI(title="Release Assurance Fixture API")
 app.include_router(runs.router)
 app.include_router(approvals.router)
+app.include_router(evidence.router)
