@@ -7,3 +7,5 @@ dist/
 *.db
 *.sqlite
 .DS_Store
+*.py[cod]
+*$py.class
