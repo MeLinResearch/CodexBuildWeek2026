@@ -28,3 +28,7 @@ def test_dependency_imports_resolve_outside_repository():
             f"{module.__name__} resolved to repo-local path {module_path}; "
             "install the real package instead of shadowing it"
         )
+        assert "/backend/" not in str(module_path).replace("\\", "/"), (
+            f"{module.__name__} resolves through a backend path {module_path}; "
+            "install the real package instead of shadowing it"
+        )

@@ -5,9 +5,10 @@ PYTHON ?= python3
 setup:
 	python -m pip install --upgrade pip
 	python -m pip install -e "backend[dev]"
-	cd frontend && npm install
+	cd frontend && npm ci
 
 test:
+	scripts/handoff_check.sh
 	python -m pytest backend/tests
 	cd frontend && npm run build
 
