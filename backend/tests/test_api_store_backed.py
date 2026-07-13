@@ -1,0 +1,155 @@
+from fastapi.testclient import TestClient
+
+from app import config
+from app.main import app
+from app.store.db import Store
+
+client = TestClient(app)
+
+
+def _use_tmp_db(monkeypatch, tmp_path):
+    db_path = tmp_path / "api.sqlite"
+    monkeypatch.setattr(config, "DB_PATH", db_path)
+    return db_path
+
+
+def _post_fixture():
+    response = client.post("/api/runs", json={"mode": "fixture", "fixture_set": "bank_migration_demo_v1"})
+    assert response.status_code == 200
+    assert response.json() == {"run_id": "RUN-001"}
+    return response
+
+
+def test_post_populates_store(monkeypatch, tmp_path):
+    db_path = _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+
+    store = Store(db_path)
+    run = store.get_run("RUN-001")
+    assert run is not None
+    assert run.state == "PATCH_PENDING"
+    assert len(store.list_requirements("RUN-001")) == 3
+    assert len(store.list_tests("RUN-001")) == 3
+    assert len(store.list_failures("RUN-001")) == 3
+    assert len(store.list_patches("RUN-001")) == 1
+    assert len(store.list_artifacts("RUN-001")) == 6
+
+
+def test_get_run_reflects_store(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+
+    payload = client.get("/api/runs/RUN-001").json()
+    assert payload["state"] == "PATCH_PENDING"
+    assert payload["mode"] == "fixture"
+    assert payload["schema_version"] == "2026-07-12.1"
+    assert payload["provenance"]["client"] == "FixtureLLMClient"
+
+
+def test_matrix_endpoint_is_built_from_store(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+
+    payload = client.get("/api/runs/RUN-001/matrix").json()
+    comparable = [
+        {key: row[key] for key in ["requirement_id", "test_id", "failure_ids", "patch_id", "row_status", "evidence_refs"]}
+        for row in payload
+    ]
+    assert comparable == [
+        {
+            "requirement_id": "REQ-001",
+            "test_id": "TEST-001",
+            "failure_ids": ["FAIL-001"],
+            "patch_id": "PATCH-001",
+            "row_status": "patch_pending",
+            "evidence_refs": ["ART-006"],
+        },
+        {
+            "requirement_id": "REQ-002",
+            "test_id": "TEST-002",
+            "failure_ids": ["FAIL-002"],
+            "patch_id": "PATCH-001",
+            "row_status": "patch_pending",
+            "evidence_refs": ["ART-007"],
+        },
+        {
+            "requirement_id": "REQ-003",
+            "test_id": "TEST-003",
+            "failure_ids": ["FAIL-003"],
+            "patch_id": "PATCH-001",
+            "row_status": "patch_pending",
+            "evidence_refs": ["ART-008"],
+        },
+    ]
+
+
+def test_failure_endpoint_omits_store_only_fields(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+
+    payload = client.get("/api/runs/RUN-001/failures/FAIL-001").json()
+    assert set(payload) == {
+        "failure_id",
+        "record_id",
+        "requirement_id",
+        "field",
+        "expected",
+        "actual",
+        "severity",
+        "record_hash",
+        "provenance",
+    }
+    assert "run_id" not in payload
+    assert "test_id" not in payload
+
+
+def test_patch_endpoints_are_store_backed(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+
+    patches_payload = client.get("/api/runs/RUN-001/patches").json()
+    patch_payload = client.get("/api/patches/PATCH-001").json()
+    assert patches_payload[0]["patch_id"] == "PATCH-001"
+    assert patches_payload[0]["status"] == "pending"
+    assert patches_payload[0]["failure_ids"] == ["FAIL-001", "FAIL-002", "FAIL-003"]
+    assert patch_payload["patch_id"] == "PATCH-001"
+    assert patch_payload["status"] == "pending"
+    assert patch_payload["failure_ids"] == ["FAIL-001", "FAIL-002", "FAIL-003"]
+
+
+def test_evidence_uses_store_data(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+
+    html = client.get("/api/runs/RUN-001/evidence").text
+    for expected in [
+        "Release Assurance Evidence Pack",
+        "run_id RUN-001",
+        "mode fixture",
+        "preserve account identifiers verbatim",
+        "debits equal credits by branch",
+        "no silent value substitution",
+        "FAIL-001",
+        "FAIL-002",
+        "FAIL-003",
+        "PATCH-001",
+        "Fixture evidence, no live model calls",
+    ]:
+        assert expected in html
+
+
+def test_unknown_ids_still_404(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+
+    assert client.get("/api/runs/RUN-999").status_code == 404
+    assert client.get("/api/patches/PATCH-999").status_code == 404
+    _post_fixture()
+    assert client.get("/api/runs/RUN-001/failures/FAIL-999").status_code == 404
+
+
+def test_no_live_env_needed(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    monkeypatch.delenv("OPENAI_API_KEY", raising=False)
+
+    _post_fixture()
+    assert client.get("/api/runs/RUN-001").status_code == 200
