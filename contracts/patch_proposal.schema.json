@@ -1,0 +1,46 @@
+{
+  "$id": "https://release-assurance.local/contracts/patch_proposal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "diff": {
+      "type": "string"
+    },
+    "failure_ids": {
+      "items": {
+        "pattern": "^FAIL-[0-9]{3}$",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "patch_id": {
+      "pattern": "^PATCH-[0-9]{3}$",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "provenance.schema.json"
+    },
+    "run_id": {
+      "pattern": "^RUN-[0-9]{3}$",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "pending",
+        "approved",
+        "rejected",
+        "applied",
+        "apply_failed"
+      ]
+    }
+  },
+  "required": [
+    "patch_id",
+    "run_id",
+    "failure_ids",
+    "diff",
+    "status",
+    "provenance"
+  ],
+  "type": "object"
+}

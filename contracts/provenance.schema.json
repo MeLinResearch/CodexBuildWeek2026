@@ -1,0 +1,67 @@
+{
+  "$id": "https://release-assurance.local/contracts/provenance.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "client": {
+      "enum": [
+        "LiveLLMClient",
+        "FixtureLLMClient",
+        "LiveCodexClient",
+        "FixtureCodexClient",
+        "none"
+      ]
+    },
+    "created_at": {
+      "format": "date-time",
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "live",
+        "fixture"
+      ]
+    },
+    "producer": {
+      "enum": [
+        "gpt-5.6",
+        "codex",
+        "deterministic",
+        "fixture"
+      ]
+    },
+    "run_id": {
+      "pattern": "^RUN-[0-9]{3}$",
+      "type": "string"
+    },
+    "schema_version": {
+      "const": "2026-07-12.1"
+    },
+    "source_artifact_ids": {
+      "items": {
+        "pattern": "^ART-[0-9]{3}$",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "validation_status": {
+      "enum": [
+        "not_required",
+        "quarantined",
+        "validated",
+        "rejected"
+      ]
+    }
+  },
+  "required": [
+    "schema_version",
+    "run_id",
+    "created_at",
+    "source_artifact_ids",
+    "producer",
+    "mode",
+    "client",
+    "validation_status"
+  ],
+  "type": "object"
+}

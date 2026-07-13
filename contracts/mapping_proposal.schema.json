@@ -1,0 +1,28 @@
+{
+  "$id": "https://release-assurance.local/contracts/mapping_proposal.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "proposal_id": {
+      "pattern": "^PATCH-[0-9]{3}$",
+      "type": "string"
+    },
+    "proposed_mapping": {
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "provenance.schema.json"
+    },
+    "requirement_id": {
+      "pattern": "^REQ-[0-9]{3}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "proposal_id",
+    "requirement_id",
+    "proposed_mapping",
+    "provenance"
+  ],
+  "type": "object"
+}

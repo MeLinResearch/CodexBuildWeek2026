@@ -1,0 +1,29 @@
+{
+  "$id": "https://release-assurance.local/contracts/run_request.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "fixture_set": {
+      "type": "string"
+    },
+    "implementation_doc_path": {
+      "type": "string"
+    },
+    "mode": {
+      "enum": [
+        "live",
+        "fixture"
+      ]
+    },
+    "source_data_path": {
+      "type": "string"
+    },
+    "target_schema_path": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "mode"
+  ],
+  "type": "object"
+}

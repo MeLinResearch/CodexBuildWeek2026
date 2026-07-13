@@ -1,0 +1,68 @@
+{
+  "provenance": {
+    "client": "FixtureLLMClient",
+    "created_at": "2026-07-12T00:00:00Z",
+    "mode": "fixture",
+    "producer": "fixture",
+    "run_id": "RUN-001",
+    "schema_version": "2026-07-12.1",
+    "source_artifact_ids": [
+      "ART-001"
+    ],
+    "validation_status": "validated"
+  },
+  "requirements": [
+    {
+      "provenance": {
+        "client": "FixtureLLMClient",
+        "created_at": "2026-07-12T00:00:00Z",
+        "mode": "fixture",
+        "producer": "fixture",
+        "run_id": "RUN-001",
+        "schema_version": "2026-07-12.1",
+        "source_artifact_ids": [
+          "ART-001"
+        ],
+        "validation_status": "validated"
+      },
+      "requirement_id": "REQ-001",
+      "rule_type": "field_validation",
+      "text": "preserve account identifiers verbatim"
+    },
+    {
+      "provenance": {
+        "client": "FixtureLLMClient",
+        "created_at": "2026-07-12T00:00:00Z",
+        "mode": "fixture",
+        "producer": "fixture",
+        "run_id": "RUN-001",
+        "schema_version": "2026-07-12.1",
+        "source_artifact_ids": [
+          "ART-001"
+        ],
+        "validation_status": "validated"
+      },
+      "requirement_id": "REQ-002",
+      "rule_type": "balancing_rule",
+      "text": "debits equal credits by branch"
+    },
+    {
+      "provenance": {
+        "client": "FixtureLLMClient",
+        "created_at": "2026-07-12T00:00:00Z",
+        "mode": "fixture",
+        "producer": "fixture",
+        "run_id": "RUN-001",
+        "schema_version": "2026-07-12.1",
+        "source_artifact_ids": [
+          "ART-001"
+        ],
+        "validation_status": "validated"
+      },
+      "requirement_id": "REQ-003",
+      "rule_type": "exception_handling",
+      "text": "no silent value substitution"
+    }
+  ],
+  "run_id": "RUN-001"
+}

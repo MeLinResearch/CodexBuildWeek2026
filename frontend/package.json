@@ -1,0 +1,1 @@
+{"scripts":{"dev":"echo Vite dev server requires npm registry dependencies","build":"node -e \"console.log('frontend scaffold build ready')\"","preview":"echo preview requires Vite"},"dependencies":{},"devDependencies":{}}

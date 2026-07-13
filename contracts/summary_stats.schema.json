@@ -1,0 +1,42 @@
+{
+  "$id": "https://release-assurance.local/contracts/summary_stats.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "failures": {
+      "type": "integer"
+    },
+    "mode": {
+      "enum": [
+        "live",
+        "fixture"
+      ]
+    },
+    "patches": {
+      "type": "integer"
+    },
+    "provenance": {
+      "$ref": "provenance.schema.json"
+    },
+    "requirements": {
+      "type": "integer"
+    },
+    "run_id": {
+      "pattern": "^RUN-[0-9]{3}$",
+      "type": "string"
+    },
+    "tests": {
+      "type": "integer"
+    }
+  },
+  "required": [
+    "run_id",
+    "requirements",
+    "tests",
+    "failures",
+    "patches",
+    "mode",
+    "provenance"
+  ],
+  "type": "object"
+}

@@ -1,0 +1,32 @@
+{
+  "provenance": {
+    "client": "FixtureLLMClient",
+    "created_at": "2026-07-12T00:00:00Z",
+    "mode": "fixture",
+    "producer": "fixture",
+    "run_id": "RUN-001",
+    "schema_version": "2026-07-12.1",
+    "source_artifact_ids": [
+      "ART-001"
+    ],
+    "validation_status": "validated"
+  },
+  "run_id": "RUN-001",
+  "tests": [
+    {
+      "requirement_id": "REQ-001",
+      "status": "failed",
+      "test_id": "TEST-001"
+    },
+    {
+      "requirement_id": "REQ-002",
+      "status": "failed",
+      "test_id": "TEST-002"
+    },
+    {
+      "requirement_id": "REQ-003",
+      "status": "failed",
+      "test_id": "TEST-003"
+    }
+  ]
+}

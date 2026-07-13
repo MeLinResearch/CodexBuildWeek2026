@@ -1,0 +1,74 @@
+[
+  {
+    "evidence_refs": [
+      "ART-006"
+    ],
+    "failure_ids": [
+      "FAIL-001"
+    ],
+    "patch_id": "PATCH-001",
+    "provenance": {
+      "client": "FixtureLLMClient",
+      "created_at": "2026-07-12T00:00:00Z",
+      "mode": "fixture",
+      "producer": "fixture",
+      "run_id": "RUN-001",
+      "schema_version": "2026-07-12.1",
+      "source_artifact_ids": [
+        "ART-001"
+      ],
+      "validation_status": "validated"
+    },
+    "requirement_id": "REQ-001",
+    "row_status": "patch_pending",
+    "test_id": "TEST-001"
+  },
+  {
+    "evidence_refs": [
+      "ART-007"
+    ],
+    "failure_ids": [
+      "FAIL-002"
+    ],
+    "patch_id": "PATCH-001",
+    "provenance": {
+      "client": "FixtureLLMClient",
+      "created_at": "2026-07-12T00:00:00Z",
+      "mode": "fixture",
+      "producer": "fixture",
+      "run_id": "RUN-001",
+      "schema_version": "2026-07-12.1",
+      "source_artifact_ids": [
+        "ART-001"
+      ],
+      "validation_status": "validated"
+    },
+    "requirement_id": "REQ-002",
+    "row_status": "patch_pending",
+    "test_id": "TEST-002"
+  },
+  {
+    "evidence_refs": [
+      "ART-008"
+    ],
+    "failure_ids": [
+      "FAIL-003"
+    ],
+    "patch_id": "PATCH-001",
+    "provenance": {
+      "client": "FixtureLLMClient",
+      "created_at": "2026-07-12T00:00:00Z",
+      "mode": "fixture",
+      "producer": "fixture",
+      "run_id": "RUN-001",
+      "schema_version": "2026-07-12.1",
+      "source_artifact_ids": [
+        "ART-001"
+      ],
+      "validation_status": "validated"
+    },
+    "requirement_id": "REQ-003",
+    "row_status": "patch_pending",
+    "test_id": "TEST-003"
+  }
+]

@@ -1,0 +1,53 @@
+{
+  "$id": "https://release-assurance.local/contracts/failed_record.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "actual": {
+      "type": "string"
+    },
+    "expected": {
+      "type": "string"
+    },
+    "failure_id": {
+      "pattern": "^FAIL-[0-9]{3}$",
+      "type": "string"
+    },
+    "field": {
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "provenance.schema.json"
+    },
+    "record_hash": {
+      "pattern": "^sha256:.+",
+      "type": "string"
+    },
+    "record_id": {
+      "type": "string"
+    },
+    "requirement_id": {
+      "pattern": "^REQ-[0-9]{3}$",
+      "type": "string"
+    },
+    "severity": {
+      "enum": [
+        "blocking",
+        "warning",
+        "info"
+      ]
+    }
+  },
+  "required": [
+    "failure_id",
+    "record_id",
+    "requirement_id",
+    "field",
+    "expected",
+    "actual",
+    "severity",
+    "record_hash",
+    "provenance"
+  ],
+  "type": "object"
+}

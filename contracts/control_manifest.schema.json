@@ -1,0 +1,57 @@
+{
+  "$id": "https://release-assurance.local/contracts/control_manifest.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "provenance": {
+      "$ref": "provenance.schema.json"
+    },
+    "requirements": {
+      "items": {
+        "additionalProperties": false,
+        "properties": {
+          "provenance": {
+            "$ref": "provenance.schema.json"
+          },
+          "requirement_id": {
+            "pattern": "^REQ-[0-9]{3}$",
+            "type": "string"
+          },
+          "rule_type": {
+            "enum": [
+              "field_validation",
+              "balancing_rule",
+              "exception_handling",
+              "mapping_rule",
+              "tolerance_rule"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "tolerance": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "requirement_id",
+          "text",
+          "rule_type",
+          "provenance"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    },
+    "run_id": {
+      "pattern": "^RUN-[0-9]{3}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "requirements",
+    "provenance"
+  ],
+  "type": "object"
+}

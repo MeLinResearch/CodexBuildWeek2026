@@ -1,0 +1,22 @@
+{
+  "actual": "12345",
+  "expected": "00012345",
+  "failure_id": "FAIL-001",
+  "field": "account_id",
+  "provenance": {
+    "client": "FixtureLLMClient",
+    "created_at": "2026-07-12T00:00:00Z",
+    "mode": "fixture",
+    "producer": "fixture",
+    "run_id": "RUN-001",
+    "schema_version": "2026-07-12.1",
+    "source_artifact_ids": [
+      "ART-001"
+    ],
+    "validation_status": "validated"
+  },
+  "record_hash": "sha256:fail001",
+  "record_id": "TXN-000001",
+  "requirement_id": "REQ-001",
+  "severity": "blocking"
+}

@@ -1,0 +1,56 @@
+{
+  "$id": "https://release-assurance.local/contracts/traceability_row.schema.json",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": false,
+  "properties": {
+    "evidence_refs": {
+      "items": {
+        "pattern": "^ART-[0-9]{3}$",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "failure_ids": {
+      "items": {
+        "pattern": "^FAIL-[0-9]{3}$",
+        "type": "string"
+      },
+      "type": "array"
+    },
+    "patch_id": {
+      "pattern": "^PATCH-[0-9]{3}$",
+      "type": "string"
+    },
+    "provenance": {
+      "$ref": "provenance.schema.json"
+    },
+    "requirement_id": {
+      "pattern": "^REQ-[0-9]{3}$",
+      "type": "string"
+    },
+    "row_status": {
+      "enum": [
+        "pending",
+        "passed",
+        "failed",
+        "patch_pending",
+        "patch_approved",
+        "rerun_passed"
+      ]
+    },
+    "test_id": {
+      "pattern": "^TEST-[0-9]{3}$",
+      "type": "string"
+    }
+  },
+  "required": [
+    "requirement_id",
+    "test_id",
+    "failure_ids",
+    "patch_id",
+    "row_status",
+    "evidence_refs",
+    "provenance"
+  ],
+  "type": "object"
+}
