@@ -2,6 +2,8 @@ import sqlite3
 
 import pytest
 
+from app import config
+from app.config import make_sequential_id_generator
 from app.store.db import Store
 from app.store.models import (
     ArtifactRow,
@@ -106,6 +108,65 @@ def test_provenance_json_constraints_reject_invalid_raw_json(tmp_path):
             """,
             ("REQ-001", "RUN-001", "Must balance", "balancing_rule", None, "{bad json"),
         )
+
+
+def test_python_side_provenance_must_be_dict(tmp_path):
+    s = store(tmp_path)
+    s.insert_run(run_row())
+    for bad_provenance in ("{bad json", ["bad"], None):
+        row = RequirementRow("REQ-001", "RUN-001", "Must balance", "balancing_rule", None, bad_provenance)
+        with pytest.raises(TypeError):
+            s.insert_requirement(row)
+
+
+def test_python_side_provenance_keys_must_be_strings(tmp_path):
+    s = store(tmp_path)
+    s.insert_run(run_row())
+    row = RequirementRow("REQ-001", "RUN-001", "Must balance", "balancing_rule", None, {1: "bad"})
+    with pytest.raises(TypeError):
+        s.insert_requirement(row)
+
+
+def test_python_side_patch_failure_ids_must_be_list_of_strings(tmp_path):
+    s = store(tmp_path)
+    s.insert_run(run_row())
+    for bad_failure_ids in ("FAIL-001", [1, 2], None):
+        row = PatchRow("PATCH-001", "RUN-001", bad_failure_ids, "diff --git", "pending", None, None, None, provenance())
+        with pytest.raises(TypeError):
+            s.insert_patch(row)
+
+
+def test_store_default_db_path_uses_config(monkeypatch, tmp_path):
+    db_path = tmp_path / "default.sqlite"
+    monkeypatch.setattr(config, "DB_PATH", db_path)
+    s = Store()
+    s.init_schema()
+    assert db_path.exists()
+
+
+def test_id_generator_respects_requested_prefix():
+    gen = make_sequential_id_generator()
+    assert gen("RUN") == "RUN-001"
+    assert gen("ART") == "ART-001"
+    assert gen("RUN") == "RUN-002"
+
+    gen = make_sequential_id_generator("RUN")
+    assert gen("") == "RUN-001"
+    assert gen("ART") == "ART-001"
+
+
+def test_artifact_run_id_may_be_none(tmp_path):
+    s = store(tmp_path)
+    row = artifact_row(run_id=None)
+    s.insert_artifact(row)
+    assert s.get_artifact("ART-001").run_id is None
+    assert s.list_artifacts() == [row]
+
+
+def test_state_transition_fk_guard(tmp_path):
+    s = store(tmp_path)
+    with pytest.raises(sqlite3.IntegrityError):
+        s.insert_state_transition("RUN-404", None, "INGESTED", "test_actor")
 
 
 def test_json_serialization_roundtrip(tmp_path):

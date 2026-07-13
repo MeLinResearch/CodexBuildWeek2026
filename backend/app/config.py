@@ -22,11 +22,13 @@ def default_clock() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
 
 
-def make_sequential_id_generator(prefix: str, start: int = 1) -> Callable[[str], str]:
+def make_sequential_id_generator(prefix: str = "", start: int = 1) -> Callable[[str], str]:
     counters: dict[str, int] = {}
 
     def generate(requested_prefix: str) -> str:
-        effective_prefix = prefix or requested_prefix
+        effective_prefix = requested_prefix or prefix
+        if not effective_prefix:
+            raise ValueError("ID prefix is required")
         current = counters.get(effective_prefix, start)
         counters[effective_prefix] = current + 1
         return f"{effective_prefix}-{current:03d}"

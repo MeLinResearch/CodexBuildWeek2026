@@ -5,7 +5,7 @@ import sqlite3
 from pathlib import Path
 from typing import Any, Callable
 
-from app.config import default_clock, make_sequential_id_generator
+from app import config
 from app.store.models import (
     ArtifactRow,
     FailureRow,
@@ -25,6 +25,22 @@ def _json_dumps(value: Any) -> str:
     return json.dumps(value, sort_keys=True)
 
 
+def _validate_provenance(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise TypeError("provenance must be a dict[str, Any]")
+    if not all(isinstance(key, str) for key in value):
+        raise TypeError("provenance keys must be strings")
+    return value
+
+
+def _validate_failure_ids(value: object) -> list[str]:
+    if not isinstance(value, list):
+        raise TypeError("failure_ids must be a list[str]")
+    if not all(isinstance(item, str) for item in value):
+        raise TypeError("failure_ids items must be strings")
+    return value
+
+
 def _json_loads(value: str) -> Any:
     return json.loads(value)
 
@@ -32,13 +48,13 @@ def _json_loads(value: str) -> Any:
 class Store:
     def __init__(
         self,
-        db_path: Path | str,
-        clock: Callable[[], str] = default_clock,
+        db_path: Path | str | None = None,
+        clock: Callable[[], str] = config.default_clock,
         id_generator: Callable[[str], str] | None = None,
     ):
-        self.db_path = Path(db_path)
+        self.db_path = Path(db_path) if db_path is not None else config.DB_PATH
         self.clock = clock
-        self.id_generator = id_generator or make_sequential_id_generator("")
+        self.id_generator = id_generator or config.make_sequential_id_generator()
 
     def connect(self) -> sqlite3.Connection:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -125,7 +141,7 @@ class Store:
                 INSERT INTO requirements (requirement_id, run_id, text, rule_type, tolerance, provenance)
                 VALUES (?, ?, ?, ?, ?, ?)
                 """,
-                (row.requirement_id, row.run_id, row.text, row.rule_type, row.tolerance, _json_dumps(row.provenance)),
+                (row.requirement_id, row.run_id, row.text, row.rule_type, row.tolerance, _json_dumps(_validate_provenance(row.provenance))),
             )
         return row
 
@@ -146,7 +162,7 @@ class Store:
                 INSERT INTO tests (test_id, run_id, requirement_id, name, status, output_ref, provenance)
                 VALUES (?, ?, ?, ?, ?, ?, ?)
                 """,
-                (row.test_id, row.run_id, row.requirement_id, row.name, row.status, row.output_ref, _json_dumps(row.provenance)),
+                (row.test_id, row.run_id, row.requirement_id, row.name, row.status, row.output_ref, _json_dumps(_validate_provenance(row.provenance))),
             )
         return row
 
@@ -167,7 +183,7 @@ class Store:
                 INSERT INTO failures (failure_id, run_id, requirement_id, test_id, record_id, field, expected, actual, severity, record_hash, provenance)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (row.failure_id, row.run_id, row.requirement_id, row.test_id, row.record_id, row.field, row.expected, row.actual, row.severity, row.record_hash, _json_dumps(row.provenance)),
+                (row.failure_id, row.run_id, row.requirement_id, row.test_id, row.record_id, row.field, row.expected, row.actual, row.severity, row.record_hash, _json_dumps(_validate_provenance(row.provenance))),
             )
         return row
 
@@ -188,7 +204,7 @@ class Store:
                 INSERT INTO patches (patch_id, run_id, failure_ids, diff, status, approved_by, approved_at, applied_at, provenance)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
-                (row.patch_id, row.run_id, _json_dumps(row.failure_ids), row.diff, row.status, row.approved_by, row.approved_at, row.applied_at, _json_dumps(row.provenance)),
+                (row.patch_id, row.run_id, _json_dumps(_validate_failure_ids(row.failure_ids)), row.diff, row.status, row.approved_by, row.approved_at, row.applied_at, _json_dumps(_validate_provenance(row.provenance))),
             )
         return row
 
