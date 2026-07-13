@@ -1,0 +1,23 @@
+{
+  "diff": "diff --git a/reconcile/migration.py b/reconcile/migration.py\n--- a/reconcile/migration.py\n+++ b/reconcile/migration.py\n@@ -1 +1 @@\n-# fixture defect behavior\n+# fixture proposal preserves IDs, branch signs, and rejects bad dates\n",
+  "failure_ids": [
+    "FAIL-001",
+    "FAIL-002",
+    "FAIL-003"
+  ],
+  "patch_id": "PATCH-001",
+  "provenance": {
+    "client": "FixtureCodexClient",
+    "created_at": "2026-07-12T00:00:00Z",
+    "mode": "fixture",
+    "producer": "fixture",
+    "run_id": "RUN-001",
+    "schema_version": "2026-07-12.1",
+    "source_artifact_ids": [
+      "ART-001"
+    ],
+    "validation_status": "validated"
+  },
+  "run_id": "RUN-001",
+  "status": "pending"
+}

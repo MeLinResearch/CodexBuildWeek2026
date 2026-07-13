@@ -1,0 +1,22 @@
+{
+  "actual": "50.00",
+  "expected": "Branch 101 debits 1250.00 credits 1200.00 diff 50.00",
+  "failure_id": "FAIL-002",
+  "field": "branch_101_balance",
+  "provenance": {
+    "client": "FixtureLLMClient",
+    "created_at": "2026-07-12T00:00:00Z",
+    "mode": "fixture",
+    "producer": "fixture",
+    "run_id": "RUN-001",
+    "schema_version": "2026-07-12.1",
+    "source_artifact_ids": [
+      "ART-001"
+    ],
+    "validation_status": "validated"
+  },
+  "record_hash": "sha256:fail002",
+  "record_id": "TXN-000002",
+  "requirement_id": "REQ-002",
+  "severity": "blocking"
+}
