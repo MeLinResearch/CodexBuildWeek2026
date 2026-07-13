@@ -18,7 +18,7 @@ export const api = {
   matrix: () => getJson('/api/runs/RUN-001/matrix', matrix),
   failure: () => getJson('/api/runs/RUN-001/failures/FAIL-001', failure),
   patch: () => getJson('/api/patches/PATCH-001', patch),
-  stats: () => getJson('/api/runs/RUN-001/summary', stats),
+  stats: () => stats,
 };
 
 export { runStatus, matrix, failure, patch, stats };
