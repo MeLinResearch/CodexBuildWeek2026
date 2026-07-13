@@ -3,10 +3,12 @@ PYTHON ?= python3
 .PHONY: setup test demo dev smoke
 
 setup:
+	python -m pip install --upgrade pip
+	python -m pip install -e "backend[dev]"
 	cd frontend && npm install
 
 test:
-	cd backend && PYTHONPATH=. pytest
+	python -m pytest backend/tests
 	cd frontend && npm run build
 
 demo:
@@ -15,7 +17,7 @@ demo:
 dev:
 	@echo "Backend: http://127.0.0.1:8000"
 	@echo "Frontend: http://127.0.0.1:5173"
-	(cd backend && PYTHONPATH=. python -m app.main) & cd frontend && npm run dev
+	(uvicorn app.main:app --app-dir backend --reload) & cd frontend && npm run dev
 
 smoke:
 	$(MAKE) setup

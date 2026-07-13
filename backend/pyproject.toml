@@ -2,10 +2,16 @@
 name = "release-assurance-backend"
 version = "0.1.0"
 requires-python = ">=3.12"
-dependencies = ["fastapi>=0.111", "uvicorn>=0.30", "jsonschema>=4.22"]
+dependencies = ["fastapi>=0.111", "pydantic>=2.7", "uvicorn>=0.30", "jsonschema>=4.22"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8.2", "httpx>=0.27"]
 
-[tool.pytest.ini_options]
-pythonpath = [".", ".."]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["app*"]
