@@ -133,7 +133,7 @@ Every major object embeds the provenance block via `$ref`:
   "run_id": "RUN-...",
   "created_at": "...",
   "source_artifact_ids": ["ART-001", "ART-002"],
-  "producer": "gpt-5.6 | codex | deterministic",
+  "producer": "gpt-5.6 | codex | deterministic | fixture",
   "mode": "live | fixture",
   "client": "LiveLLMClient | FixtureLLMClient | LiveCodexClient | FixtureCodexClient | none",
   "validation_status": "not_required | quarantined | validated | rejected"

@@ -1,6 +1,6 @@
 PRAGMA foreign_keys = ON;
 
-CREATE TABLE runs (
+CREATE TABLE IF NOT EXISTS runs (
   run_id TEXT PRIMARY KEY,
   state TEXT NOT NULL CHECK (state IN (
     'CREATED','INGESTED','MANIFEST_READY','TESTS_GENERATED','EXECUTED',
@@ -13,7 +13,7 @@ CREATE TABLE runs (
   updated_at TEXT NOT NULL
 );
 
-CREATE TABLE state_transitions (
+CREATE TABLE IF NOT EXISTS state_transitions (
   id INTEGER PRIMARY KEY,
   run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
   from_state TEXT CHECK (
@@ -32,7 +32,7 @@ CREATE TABLE state_transitions (
   at TEXT NOT NULL
 );
 
-CREATE TABLE requirements (
+CREATE TABLE IF NOT EXISTS requirements (
   requirement_id TEXT PRIMARY KEY,
   run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
   text TEXT NOT NULL,
@@ -43,7 +43,7 @@ CREATE TABLE requirements (
   provenance TEXT NOT NULL CHECK (json_valid(provenance))
 );
 
-CREATE TABLE tests (
+CREATE TABLE IF NOT EXISTS tests (
   test_id TEXT PRIMARY KEY,
   run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirements(requirement_id),
@@ -53,7 +53,7 @@ CREATE TABLE tests (
   provenance TEXT NOT NULL CHECK (json_valid(provenance))
 );
 
-CREATE TABLE failures (
+CREATE TABLE IF NOT EXISTS failures (
   failure_id TEXT PRIMARY KEY,
   run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
   requirement_id TEXT NOT NULL REFERENCES requirements(requirement_id),
@@ -67,7 +67,7 @@ CREATE TABLE failures (
   provenance TEXT NOT NULL CHECK (json_valid(provenance))
 );
 
-CREATE TABLE patches (
+CREATE TABLE IF NOT EXISTS patches (
   patch_id TEXT PRIMARY KEY,
   run_id TEXT NOT NULL REFERENCES runs(run_id) ON DELETE CASCADE,
   failure_ids TEXT NOT NULL CHECK (json_valid(failure_ids)),
@@ -79,7 +79,7 @@ CREATE TABLE patches (
   provenance TEXT NOT NULL CHECK (json_valid(provenance))
 );
 
-CREATE TABLE artifacts (
+CREATE TABLE IF NOT EXISTS artifacts (
   artifact_id TEXT PRIMARY KEY,
   run_id TEXT REFERENCES runs(run_id) ON DELETE CASCADE,
   kind TEXT NOT NULL CHECK (kind IN (
@@ -97,8 +97,8 @@ CREATE TABLE artifacts (
   created_at TEXT NOT NULL
 );
 
-CREATE INDEX idx_requirements_run_id ON requirements(run_id);
-CREATE INDEX idx_tests_run_id ON tests(run_id);
-CREATE INDEX idx_failures_run_id ON failures(run_id);
-CREATE INDEX idx_patches_run_id ON patches(run_id);
-CREATE INDEX idx_artifacts_run_id ON artifacts(run_id);
+CREATE INDEX IF NOT EXISTS idx_requirements_run_id ON requirements(run_id);
+CREATE INDEX IF NOT EXISTS idx_tests_run_id ON tests(run_id);
+CREATE INDEX IF NOT EXISTS idx_failures_run_id ON failures(run_id);
+CREATE INDEX IF NOT EXISTS idx_patches_run_id ON patches(run_id);
+CREATE INDEX IF NOT EXISTS idx_artifacts_run_id ON artifacts(run_id);
