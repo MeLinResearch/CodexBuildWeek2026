@@ -1,24 +1,60 @@
-import runStatus from '../mocks/run_status.fixture.json';
-import matrix from '../mocks/traceability_matrix.fixture.json';
-import failure from '../mocks/failed_record_FAIL-001.fixture.json';
-import patch from '../mocks/patch_PATCH-001.fixture.json';
-import stats from '../mocks/summary_stats.fixture.json';
+import type failureFixture from '@/mocks/failed_record_FAIL-001.fixture.json';
+import type patchFixture from '@/mocks/patch_PATCH-001.fixture.json';
+import type runStatusFixture from '@/mocks/run_status.fixture.json';
+import summaryStatsFixture from '@/mocks/summary_stats.fixture.json';
+import type traceabilityMatrixFixture from '@/mocks/traceability_matrix.fixture.json';
 
-export const USE_API = false;
+type TFailure = typeof failureFixture;
+type TPatch = typeof patchFixture;
+type TRunStatus = typeof runStatusFixture;
+type TSummaryStats = typeof summaryStatsFixture;
+type TTraceabilityMatrix = typeof traceabilityMatrixFixture;
 
-async function getJson(path: string, mock: unknown) {
-  if (!USE_API) return mock;
-  const response = await fetch(path);
-  if (!response.ok) throw new Error(`API request failed: ${path}`);
-  return response.json();
-}
-
-export const api = {
-  runStatus: () => getJson('/api/runs/RUN-001', runStatus),
-  matrix: () => getJson('/api/runs/RUN-001/matrix', matrix),
-  failure: () => getJson('/api/runs/RUN-001/failures/FAIL-001', failure),
-  patch: () => getJson('/api/patches/PATCH-001', patch),
-  stats: () => Promise.resolve(stats),
+type TApiRequestError = Error & {
+  status: number;
+  url: string;
 };
 
-export { runStatus, matrix, failure, patch, stats };
+const createApiRequestError = (url: string, status: number): TApiRequestError => {
+  const error = new Error(`API request failed with status ${status}: ${url}`);
+  return Object.assign(error, {
+    name: 'ApiRequestError',
+    status,
+    url,
+  });
+};
+
+const getJson = async <TResponse>(url: string): Promise<TResponse> => {
+  const response = await fetch(url, {
+    headers: {
+      Accept: 'application/json',
+    },
+  });
+
+  if (!response.ok) {
+    throw createApiRequestError(url, response.status);
+  }
+
+  const payload: unknown = await response.json();
+  return payload as TResponse;
+};
+
+const api = {
+  runStatus: (): Promise<TRunStatus> => {
+    return getJson<TRunStatus>('/api/runs/RUN-001');
+  },
+  matrix: (): Promise<TTraceabilityMatrix> => {
+    return getJson<TTraceabilityMatrix>('/api/runs/RUN-001/matrix');
+  },
+  failure: (): Promise<TFailure> => {
+    return getJson<TFailure>('/api/runs/RUN-001/failures/FAIL-001');
+  },
+  patch: (): Promise<TPatch> => {
+    return getJson<TPatch>('/api/patches/PATCH-001');
+  },
+  summaryStats: (): Promise<TSummaryStats> => {
+    return Promise.resolve(summaryStatsFixture);
+  },
+};
+
+export { api };
