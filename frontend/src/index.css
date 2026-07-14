@@ -153,8 +153,8 @@
     --sidebar-accent-foreground: #0a0a0a;
     --sidebar-border: rgba(10, 10, 10, 0.06);
     --sidebar-ring: rgba(67, 56, 202, 0.4);
-    --aurora-1: oklch(0.62 0.16 274 / 0.05);
-    --aurora-2: oklch(0.66 0.1 215 / 0.04);
+    --aurora-1: oklch(0.55 0.19 274 / 0.16);
+    --aurora-2: oklch(0.6 0.14 215 / 0.13);
 }
 
 [data-theme='dark'] {
@@ -207,8 +207,8 @@
     --sidebar-accent-foreground: #f0efed;
     --sidebar-border: rgba(255, 255, 255, 0.07);
     --sidebar-ring: rgba(165, 163, 247, 0.4);
-    --aurora-1: oklch(0.58 0.18 274 / 0.13);
-    --aurora-2: oklch(0.64 0.12 215 / 0.07);
+    --aurora-1: oklch(0.58 0.2 274 / 0.28);
+    --aurora-2: oklch(0.64 0.14 215 / 0.17);
 }
 
 @layer base {
@@ -221,18 +221,75 @@
   html {
     @apply font-sans;
     }
+  /* Tailwind v4 preflight leaves buttons with the browser default
+   * cursor; restore pointer for anything clickable. */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+    }
 }
 
 @layer components {
-  /* A single, near-imperceptible tonal wash behind the app. */
+  /* The tonal wash behind the app, breathing on a slow cycle: two
+   * stacked layers carry the brand tones on opposite corners and
+   * crossfade into each other, so the colors gently trade places
+   * while drifting a few percent. Deliberately too slow to notice
+   * unless you watch for it. */
   .app-aurora {
     position: fixed;
     inset: 0;
     z-index: -10;
     pointer-events: none;
+    overflow: hidden;
+  }
+  .app-aurora::before,
+  .app-aurora::after {
+    content: '';
+    position: absolute;
+    /* Headroom so the drift never exposes an unpainted edge. */
+    inset: -20% -10%;
+    will-change: transform, opacity;
+  }
+  .app-aurora::before {
     background:
-      radial-gradient(50rem 40rem at 8% -10%, var(--aurora-1), transparent 60%),
-      radial-gradient(46rem 38rem at 100% -4%, var(--aurora-2), transparent 58%);
+      radial-gradient(50rem 40rem at 15% 10%, var(--aurora-1), transparent 60%),
+      radial-gradient(46rem 38rem at 92% 12%, var(--aurora-2), transparent 58%);
+    animation: aurora-breathe-a 42s ease-in-out infinite;
+  }
+  .app-aurora::after {
+    background:
+      radial-gradient(50rem 40rem at 15% 10%, var(--aurora-2), transparent 60%),
+      radial-gradient(46rem 38rem at 92% 12%, var(--aurora-1), transparent 58%);
+    opacity: 0;
+    animation: aurora-breathe-b 42s ease-in-out infinite;
+  }
+  @keyframes aurora-breathe-a {
+    0%,
+    100% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      opacity: 0;
+      transform: translate3d(2%, 3%, 0) scale(1.06);
+    }
+  }
+  @keyframes aurora-breathe-b {
+    0%,
+    100% {
+      opacity: 0;
+      transform: translate3d(-2%, 2%, 0) scale(1.05);
+    }
+    50% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .app-aurora::before,
+    .app-aurora::after {
+      animation: none;
+    }
   }
   /* Mono eyebrow label: the design system's uppercase section label. */
   .eyebrow {
