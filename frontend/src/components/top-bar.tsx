@@ -3,8 +3,8 @@ import { Link, useNavigate, useParams } from '@tanstack/react-router';
 import { ShieldCheck } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useEffect, useState } from 'react';
-
 import { runStatusQuery } from '@/api/queries';
+import avatarMelinda from '@/assets/avatar-melinda.png';
 import { Dot } from '@/components/dot';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { Button } from '@/components/ui/button';
@@ -132,7 +132,10 @@ const TopBar = () => {
             </TooltipContent>
           </Tooltip>
         )}
-        <span className="text-xs text-faint-foreground">demo_user</span>
+        <span className="flex items-center gap-2">
+          <img src={avatarMelinda} alt="" className="size-6 shrink-0 rounded-full border object-cover" />
+          <span className="text-xs font-medium">Melinda Emerson</span>
+        </span>
         <ThemeToggle />
       </motion.div>
     </header>

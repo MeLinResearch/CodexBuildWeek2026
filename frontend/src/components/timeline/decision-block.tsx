@@ -8,7 +8,8 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Textarea } from '@/components/ui/textarea';
 import { useRunUi } from '@/state/run-store';
 
-const DEMO_ACTOR = 'demo_user';
+/* Matches the signed-in identity shown in the header. */
+const DEMO_ACTOR = 'melinda.emerson';
 
 type TDecision = 'approve' | 'reject';
 
