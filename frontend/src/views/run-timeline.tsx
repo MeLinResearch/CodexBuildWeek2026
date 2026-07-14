@@ -17,6 +17,7 @@ import { TestsBlock } from '@/components/timeline/tests-block';
 import { Button } from '@/components/ui/button';
 import type { IDemo } from '@/lib/demos';
 import { mapFailuresToFiles, parsePatchFiles } from '@/lib/diff-hunks';
+import { useRunStateSync } from '@/lib/use-run-state-sync';
 import { type IStepTiming, useTimelineSequence } from '@/lib/use-timeline-sequence';
 import { cn } from '@/lib/utils';
 import { type TReplayState, useRunUi } from '@/state/run-store';
@@ -48,6 +49,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   const { droppedFiles, approval, setReplayState } = useRunUi();
   const { data: matrix } = useSuspenseQuery(traceabilityMatrixQuery(demo.runId));
   const { data: patches } = useSuspenseQuery(patchesQuery(demo.runId));
+  useRunStateSync(demo.runId);
 
   const [hoveredFailureId, setHoveredFailureId] = useState<string | null>(null);
   const { statusFor, finished } = useTimelineSequence(STEP_TIMINGS, !!shouldReduceMotion);

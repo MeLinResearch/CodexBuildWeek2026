@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api, type TPatch } from '@/api/client';
@@ -19,9 +19,17 @@ interface IDecisionBlockProps {
 }
 
 const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
+  const queryClient = useQueryClient();
   const { approval, recordApproval } = useRunUi();
   const [decision, setDecision] = useState<TDecision | null>(null);
   const [note, setNote] = useState('');
+
+  /* A decision can move the run to an active state (approve requests
+   * the rerun), so the status query refetches once; if the backend
+   * really moved, its refetchInterval resumes polling on its own. */
+  const resumeStatusPolling = (): void => {
+    queryClient.invalidateQueries({ queryKey: ['runs', runId, 'status'] });
+  };
 
   const approveMutation = useMutation({
     mutationFn: async (approvalNote: string) => {
@@ -31,6 +39,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
     },
     onSuccess: ({ result }) => {
       recordApproval({ status: 'approved', actor: result.actor, note: result.note });
+      resumeStatusPolling();
     },
   });
 
@@ -40,6 +49,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
     },
     onSuccess: (result) => {
       recordApproval({ status: 'rejected', actor: result.actor, note: result.note });
+      resumeStatusPolling();
     },
   });
 
