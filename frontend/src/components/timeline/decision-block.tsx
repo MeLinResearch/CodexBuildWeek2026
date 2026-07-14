@@ -88,8 +88,8 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
         {!!approval.note && <p className="mt-2 border-l-2 border-border pl-3 text-xs text-muted-foreground italic">"{approval.note}"</p>}
         <p className="mt-2.5 text-2xs text-faint-foreground">
           {approval.status === 'approved'
-            ? 'Rerun accepted. The live pipeline will apply the patch in a sandbox, rerun the tests, and produce the evidence pack; this fixture run stays at PATCH_PENDING.'
-            : 'The run returns to TRIAGED. Rejected patches never rerun.'}
+            ? '@pivanov: Rerun accepted. The live pipeline will apply the patch in a sandbox, rerun the tests, and produce the evidence pack; this fixture run stays at PATCH_PENDING.'
+            : '@pivanov: The run returns to TRIAGED. Rejected patches never rerun.'}
         </p>
       </div>
     );

@@ -59,6 +59,30 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   const [stepsBelow, setStepsBelow] = useState(0);
   const [gatePinned, setGatePinned] = useState(false);
 
+  /* The payoff beat: after a decision, the evidence step thinks like
+   * every other pipeline step before revealing the pack, instead of
+   * popping in like a receipt. */
+  const [evidenceReady, setEvidenceReady] = useState(false);
+
+  useEffect(() => {
+    if (!approval) {
+      setEvidenceReady(false);
+      return;
+    }
+
+    if (shouldReduceMotion) {
+      setEvidenceReady(true);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setEvidenceReady(true);
+    }, 1800);
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [approval, shouldReduceMotion]);
+
   /* The end sentinel doubles as a pinned-detector: while it sits
    * below the viewport the gate card is floating, and gets a fade
    * halo so content dissolves under it instead of hard-clipping.
@@ -119,7 +143,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   }, [refScroll]);
 
   const stepsRevealed = STEP_TIMINGS.filter((_, index) => statusFor(index) === 'reading' || statusFor(index) === 'done').length;
-  const revealedCount = stepsRevealed + (finished ? 1 : 0) + (approval ? 1 : 0);
+  const revealedCount = stepsRevealed + (finished ? 1 : 0) + (approval ? 1 : 0) + (evidenceReady ? 1 : 0);
 
   /* Layout effect so the chip never paints the run's final state
    * before the replay resets it to CREATED on mount. */
@@ -159,11 +183,11 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     steps.push({ id: 'decision', title: 'Waiting for your decision', revealed: finished });
 
     if (approval) {
-      steps.push({ id: 'evidence', title: 'Evidence and artifacts', revealed: true });
+      steps.push({ id: 'evidence', title: 'Evidence and artifacts', revealed: evidenceReady });
     }
 
     return steps;
-  }, [statusFor, finished, approval]);
+  }, [statusFor, finished, approval, evidenceReady]);
 
   const requirementIds = useMemo(() => matrix.map((row) => row.requirement_id), [matrix]);
   const testRows = useMemo(() => {
@@ -288,7 +312,17 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
       </AnimatePresence>
 
       {!!approval && (
-        <AgentStep id="step-evidence" title="Evidence and artifacts" activity="Everything on this page, downloadable and auditable" status="done">
+        <AgentStep
+          id="step-evidence"
+          title="Evidence and artifacts"
+          activity={
+            evidenceReady
+              ? 'Everything on this page, downloadable and auditable'
+              : 'Assembling requirements, failures, diff, and your decision into the pack'
+          }
+          meta={evidenceReady ? 'evidence pack' : undefined}
+          status={evidenceReady ? 'done' : 'thinking'}
+        >
           <DownloadsBlock demo={demo} patch={patch} />
         </AgentStep>
       )}

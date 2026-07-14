@@ -2,8 +2,10 @@ import { useSuspenseQuery } from '@tanstack/react-query';
 import { Download, ExternalLink } from 'lucide-react';
 import type { TPatch } from '@/api/client';
 import { traceabilityMatrixQuery } from '@/api/queries';
+import { Dot } from '@/components/dot';
 import { Button } from '@/components/ui/button';
 import type { IDemo } from '@/lib/demos';
+import { useRunUi } from '@/state/run-store';
 
 interface IDownloadsBlockProps {
   demo: IDemo;
@@ -21,9 +23,28 @@ const downloadBlob = (filename: string, content: string, type: string): void => 
 
 const DownloadsBlock = ({ demo, patch }: IDownloadsBlockProps) => {
   const { data: matrix } = useSuspenseQuery(traceabilityMatrixQuery(demo.runId));
+  const { approval } = useRunUi();
+  const failureCount = matrix.reduce((total, row) => total + row.failure_ids.length, 0);
 
   return (
     <div className="rounded-lg border bg-card p-4 shadow-soft">
+      {/* The whole run in one line, every number a contract object
+       * from this page. */}
+      <div className="mb-3 flex flex-wrap items-center gap-1.5 text-xs text-muted-foreground">
+        <span className="font-mono font-semibold text-foreground">{matrix.length}</span> requirements
+        <Dot />
+        <span className="font-mono font-semibold text-foreground">{matrix.length}</span> tests
+        <Dot />
+        <span className="font-mono font-semibold text-foreground">{failureCount}</span> failures traced
+        <Dot />
+        <span className="font-mono font-semibold text-foreground">1</span> patch
+        {!!approval && (
+          <>
+            <Dot />
+            {approval.status} by <span className="font-mono font-semibold text-foreground">{approval.actor}</span>
+          </>
+        )}
+      </div>
       <div className="flex flex-wrap gap-2">
         <Button render={<a href={`/api/runs/${demo.runId}/evidence`} target="_blank" rel="noreferrer" />}>
           <ExternalLink aria-hidden="true" data-icon="inline-start" />
