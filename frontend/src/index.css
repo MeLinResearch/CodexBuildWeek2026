@@ -279,18 +279,26 @@
     inset: -20% -10%;
     will-change: transform, opacity;
   }
+  /* The layers run on different clocks (42s vs 58s, phase-shifted),
+   * so they drift in and out of sync like weather instead of a
+   * metronome; neither ever fully vanishes, so the wash never blacks
+   * out. Each layer also carries a faint low blob so the bottom of
+   * the viewport keeps some color. */
   .app-aurora::before {
     background:
       radial-gradient(50rem 40rem at 15% 10%, var(--aurora-1), transparent 60%),
-      radial-gradient(46rem 38rem at 92% 12%, var(--aurora-2), transparent 58%);
+      radial-gradient(46rem 38rem at 92% 12%, var(--aurora-2), transparent 58%),
+      radial-gradient(44rem 30rem at 28% 90%, color-mix(in oklch, var(--aurora-2) 45%, transparent), transparent 60%);
     animation: aurora-breathe-a 42s ease-in-out infinite;
   }
   .app-aurora::after {
     background:
       radial-gradient(50rem 40rem at 15% 10%, var(--aurora-2), transparent 60%),
-      radial-gradient(46rem 38rem at 92% 12%, var(--aurora-1), transparent 58%);
-    opacity: 0;
-    animation: aurora-breathe-b 42s ease-in-out infinite;
+      radial-gradient(46rem 38rem at 92% 12%, var(--aurora-1), transparent 58%),
+      radial-gradient(44rem 30rem at 74% 90%, color-mix(in oklch, var(--aurora-1) 45%, transparent), transparent 60%);
+    opacity: 0.35;
+    animation: aurora-breathe-b 58s ease-in-out infinite;
+    animation-delay: -24s;
   }
   @keyframes aurora-breathe-a {
     0%,
@@ -299,14 +307,14 @@
       transform: translate3d(0, 0, 0) scale(1);
     }
     50% {
-      opacity: 0;
+      opacity: 0.35;
       transform: translate3d(2%, 3%, 0) scale(1.06);
     }
   }
   @keyframes aurora-breathe-b {
     0%,
     100% {
-      opacity: 0;
+      opacity: 0.35;
       transform: translate3d(-2%, 2%, 0) scale(1.05);
     }
     50% {

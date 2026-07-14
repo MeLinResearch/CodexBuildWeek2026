@@ -96,7 +96,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   }
 
   return (
-    <div className="rounded-lg border border-primary/35 bg-card p-4 shadow-lift ring-2 ring-primary/10">
+    <div className="rounded-lg border border-primary/35 bg-card p-4 shadow-lift">
       <div className="flex items-center gap-2.5">
         <span aria-hidden="true" className="size-2 rounded-full bg-primary animate-attn-pulse dark:bg-primary-subtle" />
         <h3 className="text-[15px] font-medium tracking-display">Waiting for your decision</h3>
