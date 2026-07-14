@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 
 import { patchesQuery, traceabilityMatrixQuery } from '@/api/queries';
 import { Dot } from '@/components/dot';
+import { type IMinimapStep, StepMinimap } from '@/components/step-minimap';
 import { AgentStep } from '@/components/timeline/agent-step';
 import { DecisionBlock } from '@/components/timeline/decision-block';
 import { DownloadsBlock } from '@/components/timeline/downloads-block';
@@ -49,7 +50,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   const { data: patches } = useSuspenseQuery(patchesQuery(demo.runId));
 
   const [hoveredFailureId, setHoveredFailureId] = useState<string | null>(null);
-  const { statusFor, skip, finished } = useTimelineSequence(STEP_TIMINGS, !!shouldReduceMotion);
+  const { statusFor, finished } = useTimelineSequence(STEP_TIMINGS, !!shouldReduceMotion);
 
   const refEnd = useRef<HTMLDivElement>(null);
   const refFollowing = useRef(true);
@@ -143,6 +144,25 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   }, [revealedCount, shouldReduceMotion]);
 
   const patch = patches[0];
+
+  const minimapSteps = useMemo((): IMinimapStep[] => {
+    const steps = [
+      { id: 'ingest', title: 'Ingesting artifacts' },
+      { id: 'requirements', title: 'Extracting requirements' },
+      { id: 'tests', title: 'Generating and executing tests' },
+      { id: 'matrix', title: 'Building the traceability matrix' },
+      { id: 'patch', title: 'Proposing a fix' },
+    ].map((step, index) => ({ ...step, revealed: statusFor(index) !== 'pending' }));
+
+    steps.push({ id: 'decision', title: 'Waiting for your decision', revealed: finished });
+
+    if (approval) {
+      steps.push({ id: 'evidence', title: 'Evidence and artifacts', revealed: true });
+    }
+
+    return steps;
+  }, [statusFor, finished, approval]);
+
   const requirementIds = useMemo(() => matrix.map((row) => row.requirement_id), [matrix]);
   const testRows = useMemo(() => {
     return matrix.map((row) => ({ testId: row.test_id, requirementId: row.requirement_id, failed: row.failure_ids.length > 0 }));
@@ -157,29 +177,30 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
 
   return (
     <div className="mx-auto w-full max-w-[880px] pb-10">
-      <div className="mb-6 flex items-start justify-between gap-4">
-        <div>
-          <div className="eyebrow flex items-center gap-1.5">
-            {demo.runId}
-            <Dot />
-            fixture replay
-          </div>
-          <h2 className="mt-1 text-[22px] font-medium tracking-display">
-            {demo.title}, <span className="grad">gated by you</span>
-          </h2>
+      <StepMinimap steps={minimapSteps} refScroll={refScroll} />
+      <div className="mb-6">
+        <div className="eyebrow flex items-center gap-1.5">
+          {demo.runId}
+          <Dot />
+          fixture replay
         </div>
-        {!finished && (
-          <Button size="sm" variant="ghost" onClick={skip}>
-            Skip animation
-          </Button>
-        )}
+        <h2 className="mt-1 text-[22px] font-medium tracking-display">
+          {demo.title}, <span className="grad">gated by you</span>
+        </h2>
       </div>
 
-      <AgentStep title="Ingesting artifacts" activity="Registering the spec, source data, and target schema" meta="3 artifacts" status={statusFor(0)}>
+      <AgentStep
+        id="step-ingest"
+        title="Ingesting artifacts"
+        activity="Registering the spec, source data, and target schema"
+        meta="3 artifacts"
+        status={statusFor(0)}
+      >
         <IngestBlock demo={demo} droppedFiles={droppedFiles} />
       </AgentStep>
 
       <AgentStep
+        id="step-requirements"
         title="Extracting requirements"
         activity="GPT-5.6 reads the spec and emits a schema-validated control manifest"
         meta={`${requirementIds.length} requirements`}
@@ -189,6 +210,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
       </AgentStep>
 
       <AgentStep
+        id="step-tests"
         title="Generating and executing tests"
         activity="Codex writes one migration test per requirement and runs them against the migrated records"
         meta={
@@ -204,6 +226,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
       </AgentStep>
 
       <AgentStep
+        id="step-matrix"
         title="Building the traceability matrix"
         activity="Requirement to test to failure to patch; unfold a row for the failure evidence"
         meta={`${matrix.length} rows`}
@@ -213,6 +236,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
       </AgentStep>
 
       <AgentStep
+        id="step-patch"
         title="Proposing a fix"
         activity="Codex proposes a diff; hover a fix location above to see its file light up"
         meta={patch.patch_id}
@@ -222,7 +246,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
       </AgentStep>
 
       {!!approval && (
-        <AgentStep title="Waiting for your decision" activity="Decision recorded in the audit trail" status="done">
+        <AgentStep id="step-decision" title="Waiting for your decision" activity="Decision recorded in the audit trail" status="done">
           <DecisionBlock runId={demo.runId} patch={patch} />
         </AgentStep>
       )}
@@ -233,23 +257,36 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
        * no in-flow step title gets ghosted underneath it. Sticky
        * needs this tall container as its parent: inside a step it
        * would have no room to travel. */}
-      {finished && !approval && (
-        <div
-          className={cn(
-            /* Solid page background behind the card so nothing shows
-             * through the rounded corner notches while pinned. */
-            'sticky bottom-8 z-20 bg-background pl-9',
-            'before:pointer-events-none before:absolute before:inset-x-0 before:-top-20 before:h-20 before:bg-linear-to-b before:from-transparent before:to-background before:to-75% before:transition-opacity before:duration-300',
-            'after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-8 after:bg-background',
-            gatePinned ? 'before:opacity-100' : 'before:opacity-0',
-          )}
-        >
-          <DecisionBlock runId={demo.runId} patch={patch} />
-        </div>
-      )}
+      <AnimatePresence>
+        {finished && !approval && (
+          <div
+            id="step-decision"
+            className={cn(
+              /* Solid page background behind the card so nothing shows
+               * through the rounded corner notches while pinned. */
+              'sticky bottom-8 z-20 bg-background pl-9',
+              'before:pointer-events-none before:absolute before:inset-x-0 before:-top-20 before:h-20 before:bg-linear-to-b before:from-transparent before:to-background before:to-75% before:transition-opacity before:duration-300',
+              'after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-8 after:bg-background',
+              gatePinned ? 'before:opacity-100' : 'before:opacity-0',
+            )}
+          >
+            {/* The effect lives on an inner element: the sticky
+             * wrapper itself must stay untransformed or the browser
+             * would recompute its pinning against a moving box. */}
+            <motion.div
+              initial={shouldReduceMotion ? undefined : { opacity: 0, y: 28, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={shouldReduceMotion ? undefined : { opacity: 0, y: 10, transition: { duration: 0.18 } }}
+              transition={{ duration: 0.55, ease: [0.16, 1, 0.3, 1] }}
+            >
+              <DecisionBlock runId={demo.runId} patch={patch} />
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
 
       {!!approval && (
-        <AgentStep title="Evidence and artifacts" activity="Everything on this page, downloadable and auditable" status="done">
+        <AgentStep id="step-evidence" title="Evidence and artifacts" activity="Everything on this page, downloadable and auditable" status="done">
           <DownloadsBlock demo={demo} patch={patch} />
         </AgentStep>
       )}

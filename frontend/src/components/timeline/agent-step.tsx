@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { fadeInUpVariants } from '@/lib/variants';
 
 interface IAgentStepProps {
+  id?: string;
   title: string;
   activity: string;
   status: TStepStatus | 'attn';
@@ -14,7 +15,7 @@ interface IAgentStepProps {
   children?: ReactNode;
 }
 
-const AgentStep = ({ title, activity, status, meta, children }: IAgentStepProps) => {
+const AgentStep = ({ id, title, activity, status, meta, children }: IAgentStepProps) => {
   const shouldReduceMotion = useReducedMotion();
 
   if (status === 'pending') {
@@ -26,10 +27,11 @@ const AgentStep = ({ title, activity, status, meta, children }: IAgentStepProps)
 
   return (
     <motion.section
+      id={id}
       variants={shouldReduceMotion ? undefined : fadeInUpVariants}
       initial={shouldReduceMotion ? undefined : 'hidden'}
       animate="visible"
-      className="relative pb-8 pl-9 last:pb-2"
+      className="relative scroll-mt-20 pb-8 pl-9 last:pb-2"
     >
       <span aria-hidden="true" className="absolute top-7 bottom-0 left-[11px] w-px bg-border" />
       <span
