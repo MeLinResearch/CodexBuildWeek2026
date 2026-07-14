@@ -38,13 +38,13 @@ const AgentStep = ({ title, activity, status, meta, children }: IAgentStepProps)
           'absolute top-0.5 left-0 flex size-[23px] items-center justify-center rounded-full border bg-card shadow-soft',
           thinking && 'border-primary/30 text-primary dark:text-primary-subtle',
           (status === 'reading' || status === 'done') && 'border-success/30 text-success',
-          status === 'attn' && 'animate-attn-pulse border-warning/40 text-warning',
+          status === 'attn' && 'animate-attn-pulse border-primary/40 text-primary dark:text-primary-subtle',
         )}
       >
         {thinking ? (
           <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
         ) : status === 'attn' ? (
-          <span className="size-2 rounded-full bg-warning-indicator" />
+          <span className="size-2 rounded-full bg-primary dark:bg-primary-subtle" />
         ) : (
           <span className="size-2 rounded-full bg-success-indicator" />
         )}

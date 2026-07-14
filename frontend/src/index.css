@@ -211,6 +211,35 @@
     --aurora-2: oklch(0.64 0.14 215 / 0.17);
 }
 
+/* Scroll edges dissolve into the background instead of hard-cutting;
+ * apply to a positioned container. Hidden on small screens. */
+@utility faded-bottom {
+  @apply after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-32;
+  @apply after:hidden md:after:block;
+  @apply after:bg-linear-to-t after:from-background after:to-transparent;
+}
+@utility faded-top {
+  @apply after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-32;
+  @apply after:hidden md:after:block;
+  @apply after:bg-linear-to-b after:from-background after:to-transparent;
+}
+@utility faded-vertical {
+  @apply before:pointer-events-none before:absolute before:inset-x-0 before:bottom-0 before:h-32;
+  @apply before:hidden md:before:block;
+  @apply before:bg-linear-to-t before:from-background before:to-transparent;
+  @apply after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-32;
+  @apply after:hidden md:after:block;
+  @apply after:bg-linear-to-b after:from-background after:to-transparent;
+}
+@utility faded-horizontal {
+  @apply before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-32;
+  @apply before:hidden md:before:block;
+  @apply before:bg-linear-to-r before:from-background before:from-10% before:to-transparent;
+  @apply after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-32;
+  @apply after:hidden md:after:block;
+  @apply after:bg-linear-to-l after:from-background after:from-10% after:to-transparent;
+}
+
 @layer base {
   * {
     @apply border-border outline-ring/50;

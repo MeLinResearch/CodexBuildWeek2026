@@ -85,8 +85,15 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   }
 
   return (
-    <div className="rounded-lg border bg-card p-3.5 shadow-soft">
+    <div className="rounded-lg border border-primary/35 bg-card p-4 shadow-lift ring-2 ring-primary/10">
       <div className="flex items-center gap-2.5">
+        <span aria-hidden="true" className="size-2 rounded-full bg-primary animate-attn-pulse dark:bg-primary-subtle" />
+        <h3 className="text-[15px] font-medium tracking-display">Waiting for your decision</h3>
+      </div>
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        Codex proposes. <span className="font-medium text-primary dark:text-primary-subtle">You approve.</span> Nothing ships without you.
+      </p>
+      <div className="mt-3 flex items-center gap-2.5">
         <Button disabled={busy} onClick={() => openDecision('approve')}>
           {approveMutation.isPending ? 'Recording…' : 'Approve patch'}
         </Button>
@@ -99,9 +106,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
           {rejectMutation.isPending ? 'Recording…' : 'Reject patch'}
         </Button>
       </div>
-      <p className="mt-2 text-2xs text-faint-foreground">
-        Nothing is applied without you. Every decision is recorded with a note under {DEMO_ACTOR} in the audit trail.
-      </p>
+      <p className="mt-2.5 text-2xs text-faint-foreground">Every decision is recorded with a note under {DEMO_ACTOR} in the audit trail.</p>
       {(approveMutation.isError || rejectMutation.isError) && (
         <p className="mt-2 text-2xs text-destructive">The decision endpoint did not respond; try again.</p>
       )}

@@ -16,7 +16,7 @@ interface IRouterContext {
  * under the blur. */
 const RootLayout = () => {
   return (
-    <div className="isolate flex h-svh flex-col">
+    <div className="isolate relative flex h-svh flex-col faded-bottom">
       <div className="app-aurora" aria-hidden="true" />
       <ScrollArea className="min-h-0 flex-1" viewportClassName="h-full" refViewport={refAppViewport}>
         <TopBar />

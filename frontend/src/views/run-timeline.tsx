@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import type { IDemo } from '@/lib/demos';
 import { mapFailuresToFiles, parsePatchFiles } from '@/lib/diff-hunks';
 import { type IStepTiming, useTimelineSequence } from '@/lib/use-timeline-sequence';
+import { cn } from '@/lib/utils';
 import { type TReplayState, useRunUi } from '@/state/run-store';
 
 /* Paced for a human watching: each step thinks with a spinner first,
@@ -53,6 +54,33 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   const refEnd = useRef<HTMLDivElement>(null);
   const refFollowing = useRef(true);
   const [stepsBelow, setStepsBelow] = useState(0);
+  const [gatePinned, setGatePinned] = useState(false);
+
+  /* The end sentinel doubles as a pinned-detector: while it sits
+   * below the viewport the gate card is floating, and gets a fade
+   * halo so content dissolves under it instead of hard-clipping.
+   * Docked (sentinel visible), the halo would wash out the step
+   * title, so it fades away. */
+  useEffect(() => {
+    const sentinel = refEnd.current;
+    const root = refScroll.current;
+
+    if (!sentinel || !root || !finished || approval) {
+      setGatePinned(false);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        setGatePinned(!entry.isIntersecting);
+      },
+      { root },
+    );
+    observer.observe(sentinel);
+    return () => {
+      observer.disconnect();
+    };
+  }, [finished, approval, refScroll]);
 
   /* Autoscroll follows only until the user scrolls up to read; new
    * steps then queue behind the pill. Follow-state is keyed to wheel
@@ -193,13 +221,32 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
         <PatchBlock patch={patch} hoveredFailureId={hoveredFailureId} onHoverFailure={setHoveredFailureId} />
       </AgentStep>
 
-      <AgentStep
-        title="Waiting for your decision"
-        activity={approval ? 'Decision recorded in the audit trail' : 'The gate is human: nothing is applied without approval'}
-        status={finished ? (approval ? 'done' : 'attn') : 'pending'}
-      >
-        <DecisionBlock runId={demo.runId} patch={patch} />
-      </AgentStep>
+      {!!approval && (
+        <AgentStep title="Waiting for your decision" activity="Decision recorded in the audit trail" status="done">
+          <DecisionBlock runId={demo.runId} patch={patch} />
+        </AgentStep>
+      )}
+
+      {/* While the gate waits it IS the final step, pinned to the
+       * viewport bottom so approve/reject stays in reach wherever the
+       * evidence takes the reader; the card carries its own header so
+       * no in-flow step title gets ghosted underneath it. Sticky
+       * needs this tall container as its parent: inside a step it
+       * would have no room to travel. */}
+      {finished && !approval && (
+        <div
+          className={cn(
+            /* Solid page background behind the card so nothing shows
+             * through the rounded corner notches while pinned. */
+            'sticky bottom-8 z-20 bg-background pl-9',
+            'before:pointer-events-none before:absolute before:inset-x-0 before:-top-20 before:h-20 before:bg-linear-to-b before:from-transparent before:to-background before:to-75% before:transition-opacity before:duration-300',
+            'after:pointer-events-none after:absolute after:inset-x-0 after:top-full after:h-8 after:bg-background',
+            gatePinned ? 'before:opacity-100' : 'before:opacity-0',
+          )}
+        >
+          <DecisionBlock runId={demo.runId} patch={patch} />
+        </div>
+      )}
 
       {!!approval && (
         <AgentStep title="Evidence and artifacts" activity="Everything on this page, downloadable and auditable" status="done">
@@ -215,7 +262,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 8 }}
-            className="sticky bottom-4 flex justify-center"
+            className="sticky bottom-4 z-20 flex justify-center"
           >
             <Button size="sm" variant="secondary" className="rounded-4xl border shadow-lift" onClick={scrollToEnd}>
               <ArrowDown aria-hidden="true" data-icon="inline-start" />
