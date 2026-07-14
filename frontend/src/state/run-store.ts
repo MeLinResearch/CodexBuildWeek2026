@@ -11,12 +11,19 @@ interface IDroppedFile {
   content: string;
 }
 
+/* The subset of contract run states the fixture replay walks through
+ * (contracts/run_status.schema.json); the header chip mirrors them. */
+type TReplayState = 'CREATED' | 'INGESTED' | 'MANIFEST_READY' | 'EXECUTED' | 'TRIAGED' | 'PATCH_PENDING';
+
 interface IRunUiState {
   droppedFiles: IDroppedFile[] | null;
   approval: IApprovalRecord | null;
   /* One-shot request to unfold (and scroll to) the matrix row that
    * contains this failure; the matrix consumes and clears it. */
   revealFailureId: string | null;
+  /* Where the replay currently stands; the timeline advances it as
+   * each step's results land and the header chip displays it. */
+  replayState: TReplayState | null;
 }
 
 interface IRunUiStore extends IRunUiState {
@@ -27,12 +34,14 @@ interface IRunUiStore extends IRunUiState {
   reset: () => void;
   recordApproval: (approval: IApprovalRecord) => void;
   revealFailure: (failureId: string | null) => void;
+  setReplayState: (replayState: TReplayState) => void;
 }
 
 const initialState: IRunUiState = {
   droppedFiles: null,
   approval: null,
   revealFailureId: null,
+  replayState: null,
 };
 
 const useRunUi = create<IRunUiStore>((set) => ({
@@ -49,7 +58,10 @@ const useRunUi = create<IRunUiStore>((set) => ({
   revealFailure: (failureId) => {
     set({ revealFailureId: failureId });
   },
+  setReplayState: (replayState) => {
+    set({ replayState });
+  },
 }));
 
-export type { IDroppedFile };
+export type { IDroppedFile, TReplayState };
 export { useRunUi };
