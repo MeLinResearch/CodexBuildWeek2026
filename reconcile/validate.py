@@ -1,82 +1,101 @@
+"""
+Deterministic validation and type coercion.
+
+Everything here is pure and reproducible: no LLM, no randomness. Given the same
+input and rule, you always get the same output. This is the half of the system
+that makes results auditable, which is what regulated/enterprise buyers care about.
+"""
+
 from __future__ import annotations
 
-from datetime import datetime
 import re
+from datetime import datetime
 from typing import Any
-
-_NUMERIC_CLEANUP_RE = re.compile(r"[,$_\s]")
-_EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-_TRUE_VALUES = {"true", "yes", "y", "1", "t", "active"}
-_FALSE_VALUES = {"false", "no", "n", "0", "f", "inactive"}
-_DATE_FORMATS = (
-    "%Y-%m-%d",
-    "%m/%d/%Y",
-    "%m-%d-%Y",
-    "%d/%m/%Y",
-    "%Y/%m/%d",
-    "%b %d, %Y",
-    "%B %d, %Y",
-    "%b %d %Y",
-    "%B %d %Y",
-)
 
 
 def coerce_value(raw: Any, target_type: str) -> Any:
+    """Best-effort deterministic coercion. Returns None if it can't coerce cleanly."""
     if raw is None:
+        return None
+    s = str(raw).strip()
+    if s == "":
         return None
 
     if target_type == "string":
-        value = str(raw).strip()
-        return value or None
+        return s
 
     if target_type == "integer":
-        value = _NUMERIC_CLEANUP_RE.sub("", str(raw))
-        if value == "":
-            return None
+        cleaned = re.sub(r"[,$_\s]", "", s)
         try:
-            parsed = float(value)
+            number = float(cleaned)
         except ValueError:
             return None
-        if not parsed.is_integer():
+        if not number.is_integer():
             return None
-        return int(parsed)
+        return int(number)
 
     if target_type == "number":
-        value = _NUMERIC_CLEANUP_RE.sub("", str(raw))
-        if value == "":
-            return None
+        cleaned = re.sub(r"[,$_\s]", "", s)
         try:
-            return float(value)
+            return float(cleaned)
         except ValueError:
             return None
 
     if target_type == "boolean":
-        value = str(raw).strip().lower()
-        if value in _TRUE_VALUES:
+        if s.lower() in {"true", "yes", "y", "1", "t", "active"}:
             return True
-        if value in _FALSE_VALUES:
+        if s.lower() in {"false", "no", "n", "0", "f", "inactive"}:
             return False
         return None
 
     if target_type == "date":
-        value = str(raw).strip()
-        if value == "":
-            return None
-        for fmt in _DATE_FORMATS:
+        for fmt in (
+            "%Y-%m-%d",
+            "%m/%d/%Y",
+            "%m-%d-%Y",
+            "%d/%m/%Y",
+            "%Y/%m/%d",
+            "%b %d, %Y",
+            "%B %d, %Y",
+            "%b %d %Y",
+            "%B %d %Y",
+        ):
             try:
-                return datetime.strptime(value, fmt).date().isoformat()
+                return datetime.strptime(s, fmt).strftime("%Y-%m-%d")
             except ValueError:
                 continue
         return None
 
     if target_type == "email":
-        value = str(raw).strip().lower()
-        if value == "":
-            return None
-        return value if _EMAIL_RE.match(value) else None
+        return s.lower() if re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", s) else None
 
-    value = str(raw).strip()
-    return value or None
+    return s
+
+
+def validate_record(record: dict[str, Any], schema: dict[str, Any]) -> list[str]:
+    """Return a list of human-readable validation errors. Empty list = valid."""
+    errors: list[str] = []
+    fields = schema.get("fields", {})
+
+    for name, spec in fields.items():
+        value = record.get(name)
+        required = spec.get("required", False)
+
+        if value is None:
+            if required:
+                errors.append(f"missing required field '{name}'")
+            continue
+
+        expected = spec.get("type", "string")
+        if not _type_ok(value, expected):
+            errors.append(f"field '{name}' failed type '{expected}' (got {value!r})")
+
+        if "enum" in spec and value not in spec["enum"]:
+            errors.append(
+                f"field '{name}' value {value!r} not in allowed set {spec['enum']}"
+            )
+
+    return errors
 
 
 def _type_ok(value: Any, expected: str) -> bool:
@@ -91,28 +110,3 @@ def _type_ok(value: Any, expected: str) -> bool:
     if expected in ("date", "email"):
         return isinstance(value, str) and value != ""
     return True
-
-
-def validate_record(record: dict[str, Any], schema: dict[str, Any]) -> list[str]:
-    errors: list[str] = []
-
-    for name, spec in schema.get("fields", {}).items():
-        value = record.get(name)
-        required = spec.get("required", False)
-        expected = spec.get("type", "string")
-
-        if required and (value is None or value == ""):
-            errors.append(f"missing required field '{name}'")
-            continue
-
-        if value is None or value == "":
-            continue
-
-        if not _type_ok(value, expected):
-            errors.append(f"field '{name}' failed type '{expected}' (got {value!r})")
-            continue
-
-        if "enum" in spec and value not in spec["enum"]:
-            errors.append(f"field '{name}' value {value!r} not in allowed set {spec['enum']}")
-
-    return errors
