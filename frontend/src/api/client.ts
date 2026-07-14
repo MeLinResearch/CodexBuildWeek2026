@@ -1,24 +1,87 @@
-import runStatus from '../mocks/run_status.fixture.json';
-import matrix from '../mocks/traceability_matrix.fixture.json';
-import failure from '../mocks/failed_record_FAIL-001.fixture.json';
-import patch from '../mocks/patch_PATCH-001.fixture.json';
-import stats from '../mocks/summary_stats.fixture.json';
+import type failureFixture from '@/mocks/failed_record_FAIL-001.fixture.json';
+import type patchFixture from '@/mocks/patch_PATCH-001.fixture.json';
+import type runStatusFixture from '@/mocks/run_status.fixture.json';
+import type traceabilityMatrixFixture from '@/mocks/traceability_matrix.fixture.json';
 
-export const USE_API = false;
+type TFailure = typeof failureFixture;
+type TPatch = typeof patchFixture;
+type TRunStatus = typeof runStatusFixture;
+type TTraceabilityMatrix = typeof traceabilityMatrixFixture;
 
-async function getJson(path: string, mock: unknown) {
-  if (!USE_API) return mock;
-  const response = await fetch(path);
-  if (!response.ok) throw new Error(`API request failed: ${path}`);
-  return response.json();
+interface IApprovalResult {
+  patch_id: string;
+  status: 'approved' | 'rejected';
+  actor: string;
+  note: string | null;
 }
 
-export const api = {
-  runStatus: () => getJson('/api/runs/RUN-001', runStatus),
-  matrix: () => getJson('/api/runs/RUN-001/matrix', matrix),
-  failure: () => getJson('/api/runs/RUN-001/failures/FAIL-001', failure),
-  patch: () => getJson('/api/patches/PATCH-001', patch),
-  stats: () => Promise.resolve(stats),
+interface IRerunResult {
+  run_id: string;
+  status: string;
+  mode: string;
+}
+
+type TApiRequestError = Error & {
+  status: number;
+  url: string;
 };
 
-export { runStatus, matrix, failure, patch, stats };
+const createApiRequestError = (url: string, status: number): TApiRequestError => {
+  const error = new Error(`API request failed with status ${status}: ${url}`);
+  return Object.assign(error, {
+    name: 'ApiRequestError',
+    status,
+    url,
+  });
+};
+
+const requestJson = async <TResponse>(url: string, init?: RequestInit): Promise<TResponse> => {
+  const response = await fetch(url, {
+    ...init,
+    headers: {
+      Accept: 'application/json',
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
+    },
+  });
+
+  if (!response.ok) {
+    throw createApiRequestError(url, response.status);
+  }
+
+  const payload: unknown = await response.json();
+  return payload as TResponse;
+};
+
+const api = {
+  runStatus: (runId: string): Promise<TRunStatus> => {
+    return requestJson<TRunStatus>(`/api/runs/${runId}`);
+  },
+  matrix: (runId: string): Promise<TTraceabilityMatrix> => {
+    return requestJson<TTraceabilityMatrix>(`/api/runs/${runId}/matrix`);
+  },
+  failure: (runId: string, failureId: string): Promise<TFailure> => {
+    return requestJson<TFailure>(`/api/runs/${runId}/failures/${failureId}`);
+  },
+  patches: (runId: string): Promise<TPatch[]> => {
+    return requestJson<TPatch[]>(`/api/runs/${runId}/patches`);
+  },
+  approvePatch: (patchId: string, actor: string, note: string | null): Promise<IApprovalResult> => {
+    return requestJson<IApprovalResult>(`/api/patches/${patchId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ actor, note }),
+    });
+  },
+  rejectPatch: (patchId: string, actor: string, note: string | null): Promise<IApprovalResult> => {
+    return requestJson<IApprovalResult>(`/api/patches/${patchId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ actor, note }),
+    });
+  },
+  rerun: (runId: string): Promise<IRerunResult> => {
+    return requestJson<IRerunResult>(`/api/runs/${runId}/rerun`, { method: 'POST' });
+  },
+};
+
+export type { TFailure, TPatch };
+export { api };

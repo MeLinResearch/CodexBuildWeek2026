@@ -1,24 +1,26 @@
 PYTHON ?= python3
+BUN ?= bun
 
 .PHONY: setup test demo dev smoke
 
 setup:
-	python -m pip install --upgrade pip
-	python -m pip install -e "backend[dev]"
-	cd frontend && npm ci
+	$(PYTHON) -m pip install --upgrade pip
+	$(PYTHON) -m pip install -e "backend[dev]"
+	cd frontend && $(BUN) install --frozen-lockfile
 
 test:
-	scripts/handoff_check.sh
-	python -m pytest backend/tests
-	cd frontend && npm run build
+	$(PYTHON) -m pytest backend/tests
+	cd frontend && $(BUN) lint
+	cd frontend && $(BUN) test
+	cd frontend && $(BUN) run build
 
 demo:
 	./scripts/demo.sh
 
 dev:
-	@echo "Backend: http://127.0.0.1:8000"
-	@echo "Frontend: http://127.0.0.1:5173"
-	(uvicorn app.main:app --app-dir backend --reload) & cd frontend && npm run dev
+	@echo "Mock API: http://127.0.0.1:7001"
+	@echo "Frontend: http://127.0.0.1:7000"
+	cd frontend && $(BUN) run dev
 
 smoke:
 	$(MAKE) setup

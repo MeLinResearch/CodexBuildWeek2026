@@ -1,0 +1,4 @@
+{
+  "required": ["account_id", "branch", "effective_date", "amount", "txn_code"],
+  "type": "object"
+}

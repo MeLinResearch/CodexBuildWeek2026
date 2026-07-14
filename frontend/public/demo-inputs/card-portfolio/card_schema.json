@@ -1,0 +1,4 @@
+{
+  "required": ["product_tier", "accrued_interest", "currency"],
+  "type": "object"
+}

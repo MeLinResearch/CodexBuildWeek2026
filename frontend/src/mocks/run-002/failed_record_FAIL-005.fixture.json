@@ -1,0 +1,22 @@
+{
+  "actual": "41.90",
+  "expected": "41.87 within 0.01",
+  "failure_id": "FAIL-005",
+  "field": "accrued_interest",
+  "provenance": {
+    "client": "FixtureLLMClient",
+    "created_at": "2026-07-12T00:00:00Z",
+    "mode": "fixture",
+    "producer": "fixture",
+    "run_id": "RUN-002",
+    "schema_version": "2026-07-12.1",
+    "source_artifact_ids": [
+      "ART-001"
+    ],
+    "validation_status": "validated"
+  },
+  "record_hash": "sha256:fail005",
+  "record_id": "CARD-002906",
+  "requirement_id": "REQ-005",
+  "severity": "warning"
+}

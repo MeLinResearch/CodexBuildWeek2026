@@ -1,0 +1,23 @@
+{
+  "diff": "diff --git a/reconcile/loans.py b/reconcile/loans.py\n--- a/reconcile/loans.py\n+++ b/reconcile/loans.py\n@@ -24,7 +24,7 @@ def migrate_schedule(loan):\n-    next_payment = loan.next_payment.astimezone(UTC).date()\n+    next_payment = loan.next_payment.date()  # schedule dates are civil dates, never shifted\n     schedule.append(next_payment)\n@@ -41,6 +41,6 @@ def carry_accrued_interest(loan):\n-    accrued = float(loan.accrued_interest)\n+    accrued = Decimal(loan.accrued_interest).quantize(Decimal(\"0.01\"))\n     target.accrued_interest = accrued\n@@ -63,5 +63,7 @@ def merge_borrowers(records):\n     for record in records:\n+        if record.borrower_id in seen:\n+            raise DuplicateBorrowerError(record.borrower_id)\n         seen.add(record.borrower_id)\n",
+  "failure_ids": [
+    "FAIL-007",
+    "FAIL-008",
+    "FAIL-009"
+  ],
+  "patch_id": "PATCH-003",
+  "provenance": {
+    "client": "FixtureCodexClient",
+    "created_at": "2026-07-12T00:00:00Z",
+    "mode": "fixture",
+    "producer": "fixture",
+    "run_id": "RUN-003",
+    "schema_version": "2026-07-12.1",
+    "source_artifact_ids": [
+      "ART-001"
+    ],
+    "validation_status": "validated"
+  },
+  "run_id": "RUN-003",
+  "status": "pending"
+}
