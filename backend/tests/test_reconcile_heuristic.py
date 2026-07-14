@@ -11,9 +11,14 @@ def test_exact_normalized_match_maps_to_same_field():
 
 
 def test_supported_synonym_match_maps_using_existing_synonym():
-    schema = {"fields": {"amount": {"type": "number", "required": False}}}
-    assert propose_mapping(sample=[{"amt": "10"}], target_schema=schema) == {
-        "amount": {"source": "amt", "type": "number"}
+    schema = {"fields": {"full_name": {"type": "string", "required": True}}}
+    assert propose_mapping(sample=[{"customername": "Jane Doe"}], target_schema=schema) == {
+        "full_name": {"source": "customername", "type": "string"}
+    }
+    assert propose_mapping(
+        sample=[{"primary_customername_value": "Jane Doe"}], target_schema=schema
+    ) == {
+        "full_name": {"source": "primary_customername_value", "type": "string"}
     }
 
 

@@ -9,17 +9,15 @@ TARGET_SCHEMA = {
         "full_name": {"type": "string", "required": True},
         "email": {"type": "email", "required": True},
         "amount": {"type": "number", "required": False},
-        "signup_date": {"type": "date", "required": True},
         "active": {"type": "boolean", "required": False},
     }
 }
 
 GOOD_MAPPING = {
-    "full_name": {"source": "name", "type": "string"},
-    "email": {"source": "email", "type": "email"},
-    "amount": {"source": "amount", "type": "number"},
-    "signup_date": {"source": "joined", "type": "date"},
-    "active": {"source": "status", "type": "boolean"},
+    "full_name": {"source": "Customer Name", "type": "string"},
+    "email": {"source": "E-Mail", "type": "email"},
+    "amount": {"source": "Total", "type": "number"},
+    "active": {"source": "Status", "type": "boolean"},
 }
 
 
@@ -60,43 +58,49 @@ class SequenceProposer:
 def test_clean_records_are_transformed_successfully():
     records = [
         {
-            "name": " Jane Doe ",
-            "email": "JANE@EXAMPLE.COM",
-            "amount": "$1,250.00",
-            "joined": "01/15/2024",
-            "status": "active",
+            "Customer Name": " Jane Doe ",
+            "E-Mail": "JANE@EXAMPLE.COM",
+            "Total": "$1,250.00",
+            "Status": "active",
         }
     ]
     proposer = StaticProposer(GOOD_MAPPING)
 
     result = reconcile(records, TARGET_SCHEMA, propose=proposer)
 
+    assert result.mapping == GOOD_MAPPING
     assert result.clean_records == [
         {
             "full_name": "Jane Doe",
             "email": "jane@example.com",
             "amount": 1250.0,
-            "signup_date": "2024-01-15",
             "active": True,
         }
     ]
     assert result.failed_records == []
     assert result.rounds_used == 1
     assert result.success_rate == 1.0
-    assert proposer.calls[0]["sample"] == records
-    assert proposer.calls[0]["target_schema"] == TARGET_SCHEMA
-    assert proposer.calls[0]["previous_mapping"] is None
-    assert proposer.calls[0]["failures"] is None
+    assert result.log == [
+        "round 1: proposed mapping for 4 target fields",
+        "round 1: 1 ok, 0 failed (100%)",
+    ]
+    assert proposer.calls == [
+        {
+            "sample": records,
+            "target_schema": TARGET_SCHEMA,
+            "previous_mapping": None,
+            "failures": None,
+        }
+    ]
 
 
 def test_invalid_records_are_separated_with_auditable_failure_information():
     records = [
         {
-            "name": "Wei Chen",
-            "email": "not-an-email",
-            "amount": "450.50",
-            "joined": "03/22/2024",
-            "status": "active",
+            "Customer Name": "Wei Chen",
+            "E-Mail": "not-an-email",
+            "Total": "450.50",
+            "Status": "active",
         }
     ]
     proposer = StaticProposer(GOOD_MAPPING)
@@ -112,32 +116,44 @@ def test_invalid_records_are_separated_with_auditable_failure_information():
                 "full_name": "Wei Chen",
                 "email": None,
                 "amount": 450.5,
-                "signup_date": "2024-03-22",
                 "active": True,
             },
         }
     ]
     assert result.success_rate == 0.0
+    assert result.log == [
+        "round 1: proposed mapping for 4 target fields",
+        "round 1: 0 ok, 1 failed (0%)",
+    ]
 
 
 def test_missing_required_field_does_not_silently_pass_or_get_invented():
-    records = [{"name": "No Date", "email": "person@example.com", "amount": "5", "status": "yes"}]
+    records = [{"E-Mail": "person@example.com", "Total": "5", "Status": "yes"}]
     proposer = StaticProposer(GOOD_MAPPING)
 
     result = reconcile(records, TARGET_SCHEMA, max_rounds=1, propose=proposer)
 
-    assert result.failed_records[0]["_errors"] == ["missing required field 'signup_date'"]
-    assert result.failed_records[0]["_partial"]["signup_date"] is None
+    assert result.failed_records == [
+        {
+            "_record": records[0],
+            "_errors": ["missing required field 'full_name'"],
+            "_partial": {
+                "full_name": None,
+                "email": "person@example.com",
+                "amount": 5.0,
+                "active": True,
+            },
+        }
+    ]
 
 
 def test_input_records_are_not_mutated_in_place():
     records = [
         {
-            "name": "Jane Doe",
-            "email": "JANE@EXAMPLE.COM",
-            "amount": "1,250",
-            "joined": "2024-01-15",
-            "status": "active",
+            "Customer Name": "Jane Doe",
+            "E-Mail": "JANE@EXAMPLE.COM",
+            "Total": "1,250",
+            "Status": "active",
         }
     ]
     original = deepcopy(records)
@@ -150,16 +166,15 @@ def test_input_records_are_not_mutated_in_place():
 def test_retry_uses_failure_feedback_and_accepts_corrected_mapping():
     records = [
         {
-            "name": "Jane Doe",
-            "email": "jane@example.com",
-            "amount": "1,250",
-            "joined": "2024-01-15",
-            "status": "active",
+            "Customer Name": "Jane Doe",
+            "E-Mail": "jane@example.com",
+            "Total": "1,250",
+            "Status": "active",
         }
     ]
     bad_mapping = {
         **GOOD_MAPPING,
-        "signup_date": {"source": "missing", "type": "date"},
+        "email": {"source": "Missing Email", "type": "email"},
     }
     proposer = SequenceProposer([bad_mapping, GOOD_MAPPING])
 
@@ -170,12 +185,17 @@ def test_retry_uses_failure_feedback_and_accepts_corrected_mapping():
             "full_name": "Jane Doe",
             "email": "jane@example.com",
             "amount": 1250.0,
-            "signup_date": "2024-01-15",
             "active": True,
         }
     ]
     assert result.failed_records == []
     assert result.rounds_used == 2
+    assert result.log == [
+        "round 1: proposed mapping for 4 target fields",
+        "round 1: 0 ok, 1 failed (0%)",
+        "round 2: proposed mapping for 4 target fields",
+        "round 2: 1 ok, 0 failed (100%)",
+    ]
     assert proposer.calls[0]["previous_mapping"] is None
     assert proposer.calls[0]["failures"] is None
     assert proposer.calls[1]["previous_mapping"] == bad_mapping

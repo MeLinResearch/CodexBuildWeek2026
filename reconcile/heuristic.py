@@ -41,11 +41,16 @@ def _pick_source(target_field: str, sources: list[str], normalized_sources: dict
                 return source
 
     for synonym in sorted(_SYNONYMS.get(normalized_target, set())):
-        if len(synonym) < 3:
-            continue
         for source in sorted(sources):
             normalized_source = _normalize(source)
-            if len(normalized_source) >= 3 and normalized_source == synonym:
+            if len(synonym) >= 3 and synonym == normalized_source:
+                return source
+
+            if (
+                len(synonym) >= 3
+                and len(normalized_source) >= 3
+                and synonym in normalized_source
+            ):
                 return source
 
     return None

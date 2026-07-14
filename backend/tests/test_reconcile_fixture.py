@@ -29,6 +29,23 @@ def test_reconcile_fixture_is_expected_deterministic_and_live_free(monkeypatch):
     assert first_result.rounds_used == second_result.rounds_used
     assert first_result.log == second_result.log
     assert to_json(first_result).encode("utf-8") == to_json(second_result).encode("utf-8")
+    assert json.loads(to_json(first_result)) == {
+        "mapping": {
+            "full_name": {"source": "Customer Name", "type": "string"},
+            "email": {"source": "E-Mail", "type": "email"},
+            "amount": {"source": "Total", "type": "number"},
+            "signup_date": {"source": "Created", "type": "date"},
+            "active": {"source": "Status", "type": "boolean"},
+        },
+        "success_rate": 0.667,
+        "rounds_used": 1,
+        "clean_count": 4,
+        "failed_count": 2,
+        "log": [
+            "round 1: proposed mapping for 5 target fields",
+            "round 1: 4 ok, 2 failed (67%)",
+        ],
+    }
     assert first_result.mapping == {
         "full_name": {"source": "Customer Name", "type": "string"},
         "email": {"source": "E-Mail", "type": "email"},

@@ -19,19 +19,38 @@ class ReconcileResult:
     @property
     def success_rate(self) -> float:
         total = len(self.clean_records) + len(self.failed_records)
-        if total == 0:
-            return 1.0
-        return len(self.clean_records) / total
+        return len(self.clean_records) / total if total else 0.0
 
 
-def _transform_record(record: dict[str, Any], mapping: dict[str, Any]) -> dict[str, Any]:
-    transformed: dict[str, Any] = {}
-    for target_field, rule in mapping.items():
-        source = rule.get("source")
-        target_type = rule.get("type", "string")
-        raw = record.get(source) if source is not None else None
-        transformed[target_field] = coerce_value(raw, target_type)
-    return transformed
+def _apply_and_validate(
+    records: list[dict[str, Any]],
+    mapping: dict[str, Any],
+    target_schema: dict[str, Any],
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+    clean: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
+
+    for rec in records:
+        transformed: dict[str, Any] = {}
+        for target_name, rule in mapping.items():
+            source_name = rule.get("source")
+            target_type = rule.get("type", "string")
+            raw = rec.get(source_name) if source_name else None
+            transformed[target_name] = coerce_value(raw, target_type)
+
+        errors = validate_record(transformed, target_schema)
+        if errors:
+            failed.append(
+                {
+                    "_record": rec,
+                    "_errors": errors,
+                    "_partial": transformed,
+                }
+            )
+        else:
+            clean.append(transformed)
+
+    return clean, failed
 
 
 def reconcile(
@@ -44,59 +63,50 @@ def reconcile(
 ) -> ReconcileResult:
     sample = records[:sample_size]
     previous_mapping: dict[str, Any] | None = None
-    failures: list[dict[str, Any]] | None = None
+    failures_for_feedback: list[dict[str, Any]] | None = None
     log: list[str] = []
 
-    final_mapping: dict[str, Any] = {}
-    clean_records: list[dict[str, Any]] = []
-    failed_records: list[dict[str, Any]] = []
+    last_mapping: dict[str, Any] = {}
+    clean: list[dict[str, Any]] = []
+    failed: list[dict[str, Any]] = []
 
-    for round_number in range(1, max_rounds + 1):
+    for round_num in range(1, max_rounds + 1):
         mapping = propose(
             sample=sample,
             target_schema=target_schema,
             previous_mapping=previous_mapping,
-            failures=failures,
+            failures=failures_for_feedback,
         )
-        final_mapping = mapping
-        clean_records = []
-        failed_records = []
-
-        for record in records:
-            transformed = _transform_record(record, mapping)
-            errors = validate_record(transformed, target_schema)
-            if errors:
-                failed_records.append(
-                    {
-                        "_record": record.copy(),
-                        "_errors": errors,
-                        "_partial": transformed,
-                    }
-                )
-            else:
-                clean_records.append(transformed)
-
+        last_mapping = mapping
         log.append(
-            f"round {round_number}: {len(clean_records)} clean, {len(failed_records)} failed"
+            f"round {round_num}: proposed mapping for {len(mapping)} target fields"
         )
 
-        if not failed_records:
-            return ReconcileResult(mapping, clean_records, failed_records, round_number, log)
+        clean, failed = _apply_and_validate(records, mapping, target_schema)
+        log.append(
+            f"round {round_num}: {len(clean)} ok, {len(failed)} failed "
+            f"({len(clean) / max(len(records), 1):.0%})"
+        )
+
+        if not failed:
+            return ReconcileResult(mapping, clean, failed, round_num, log)
 
         previous_mapping = mapping
-        failures = [failure["_record"] for failure in failed_records]
+        failures_for_feedback = [
+            failure["_record"] for failure in failed[:sample_size]
+        ]
 
-    return ReconcileResult(final_mapping, clean_records, failed_records, max_rounds, log)
+    return ReconcileResult(last_mapping, clean, failed, max_rounds, log)
 
 
 def to_json(result: ReconcileResult) -> str:
     return json.dumps(
         {
             "mapping": result.mapping,
-            "clean_records": result.clean_records,
-            "failed_records": result.failed_records,
+            "success_rate": round(result.success_rate, 3),
             "rounds_used": result.rounds_used,
-            "success_rate": result.success_rate,
+            "clean_count": len(result.clean_records),
+            "failed_count": len(result.failed_records),
             "log": result.log,
         },
         indent=2,

@@ -4,7 +4,10 @@ from datetime import datetime
 import re
 from typing import Any
 
+_NUMERIC_CLEANUP_RE = re.compile(r"[,$_\s]")
 _EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+_TRUE_VALUES = {"true", "yes", "y", "1", "t", "active"}
+_FALSE_VALUES = {"false", "no", "n", "0", "f", "inactive"}
 _DATE_FORMATS = (
     "%Y-%m-%d",
     "%m/%d/%Y",
@@ -16,27 +19,19 @@ _DATE_FORMATS = (
     "%b %d %Y",
     "%B %d %Y",
 )
-_TRUE_VALUES = {"true", "yes", "y", "1", "t", "active"}
-_FALSE_VALUES = {"false", "no", "n", "0", "f", "inactive"}
-
-
-def _clean_numeric(raw: Any) -> str:
-    return "".join(str(raw).replace(",", "").replace("$", "").replace("_", "").split())
 
 
 def coerce_value(raw: Any, target_type: str) -> Any:
     if raw is None:
         return None
 
-    target_type = (target_type or "string").lower()
-
     if target_type == "string":
         value = str(raw).strip()
-        return value if value else None
+        return value or None
 
     if target_type == "integer":
-        value = _clean_numeric(raw)
-        if not value:
+        value = _NUMERIC_CLEANUP_RE.sub("", str(raw))
+        if value == "":
             return None
         try:
             parsed = float(value)
@@ -47,8 +42,8 @@ def coerce_value(raw: Any, target_type: str) -> Any:
         return int(parsed)
 
     if target_type == "number":
-        value = _clean_numeric(raw)
-        if not value:
+        value = _NUMERIC_CLEANUP_RE.sub("", str(raw))
+        if value == "":
             return None
         try:
             return float(value)
@@ -65,55 +60,59 @@ def coerce_value(raw: Any, target_type: str) -> Any:
 
     if target_type == "date":
         value = str(raw).strip()
-        if not value:
+        if value == "":
             return None
-        for date_format in _DATE_FORMATS:
+        for fmt in _DATE_FORMATS:
             try:
-                return datetime.strptime(value, date_format).date().isoformat()
+                return datetime.strptime(value, fmt).date().isoformat()
             except ValueError:
-                pass
+                continue
         return None
 
     if target_type == "email":
         value = str(raw).strip().lower()
-        if not value:
+        if value == "":
             return None
         return value if _EMAIL_RE.match(value) else None
 
     value = str(raw).strip()
-    return value if value else None
+    return value or None
+
+
+def _type_ok(value: Any, expected: str) -> bool:
+    if expected == "string":
+        return isinstance(value, str)
+    if expected == "integer":
+        return isinstance(value, int) and not isinstance(value, bool)
+    if expected == "number":
+        return isinstance(value, (int, float)) and not isinstance(value, bool)
+    if expected == "boolean":
+        return isinstance(value, bool)
+    if expected in ("date", "email"):
+        return isinstance(value, str) and value != ""
+    return True
 
 
 def validate_record(record: dict[str, Any], schema: dict[str, Any]) -> list[str]:
     errors: list[str] = []
-    fields = schema.get("fields", {})
 
-    for field, definition in fields.items():
-        value = record.get(field)
-        target_type = definition.get("type", "string")
-        required = definition.get("required", False)
+    for name, spec in schema.get("fields", {}).items():
+        value = record.get(name)
+        required = spec.get("required", False)
+        expected = spec.get("type", "string")
 
         if required and (value is None or value == ""):
-            errors.append(f"missing required field '{field}'")
+            errors.append(f"missing required field '{name}'")
             continue
 
         if value is None or value == "":
             continue
 
-        if target_type == "string" and not isinstance(value, str):
-            errors.append(f"field '{field}' expected string")
-        elif target_type == "integer" and not isinstance(value, int):
-            errors.append(f"field '{field}' expected integer")
-        elif target_type == "number" and not isinstance(value, (int, float)):
-            errors.append(f"field '{field}' expected number")
-        elif target_type == "boolean" and not isinstance(value, bool):
-            errors.append(f"field '{field}' expected boolean")
-        elif target_type == "date" and not isinstance(value, str):
-            errors.append(f"field '{field}' expected date")
-        elif target_type == "email" and not (isinstance(value, str) and _EMAIL_RE.match(value)):
-            errors.append(f"field '{field}' expected email")
+        if not _type_ok(value, expected):
+            errors.append(f"field '{name}' failed type '{expected}' (got {value!r})")
+            continue
 
-        if "enum" in definition and value not in definition["enum"]:
-            errors.append(f"field '{field}' must be one of {definition['enum']}")
+        if "enum" in spec and value not in spec["enum"]:
+            errors.append(f"field '{name}' value {value!r} not in allowed set {spec['enum']}")
 
     return errors
