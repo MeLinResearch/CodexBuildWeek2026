@@ -11,7 +11,6 @@ interface IDemo {
   patchId: string;
   title: string;
   tagline: string;
-  description: string;
   inputs: IDemoInput[];
 }
 
@@ -26,8 +25,6 @@ const DEMOS: IDemo[] = [
     patchId: 'PATCH-001',
     title: 'Core banking migration',
     tagline: 'Account IDs, branch balancing, date hygiene',
-    description:
-      'A legacy transaction ledger moves to a new core. Three planted defect classes: identifier truncation, a sign flip that only branch-level balancing catches, and silent date substitution.',
     inputs: [
       {
         name: 'implementation_doc.md',
@@ -57,8 +54,6 @@ const DEMOS: IDemo[] = [
     patchId: 'PATCH-002',
     title: 'Card portfolio conversion',
     tagline: 'Tier mapping, interest rounding, currency codes',
-    description:
-      'A credit card book moves to a new product scheme. Legacy tier codes must map losslessly, recomputed interest must match to the cent, and every currency code must be real ISO 4217.',
     inputs: [
       {
         name: 'card_conversion_spec.md',
@@ -88,8 +83,6 @@ const DEMOS: IDemo[] = [
     patchId: 'PATCH-003',
     title: 'Loan book cutover',
     tagline: 'Schedule dates, accrual precision, borrower dedupe',
-    description:
-      'A mortgage portfolio changes servicers. Payment schedules must survive timezone conversion, accrued interest must carry to the cent, and merged borrower records must stay unique.',
     inputs: [
       {
         name: 'loan_cutover_spec.md',

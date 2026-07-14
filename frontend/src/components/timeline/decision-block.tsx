@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api, type TPatch } from '@/api/client';
@@ -8,7 +8,8 @@ import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, Di
 import { Textarea } from '@/components/ui/textarea';
 import { useRunUi } from '@/state/run-store';
 
-const DEMO_ACTOR = 'demo_user';
+/* Matches the signed-in identity shown in the header. */
+const DEMO_ACTOR = 'melinda.emerson';
 
 type TDecision = 'approve' | 'reject';
 
@@ -18,9 +19,17 @@ interface IDecisionBlockProps {
 }
 
 const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
+  const queryClient = useQueryClient();
   const { approval, recordApproval } = useRunUi();
   const [decision, setDecision] = useState<TDecision | null>(null);
   const [note, setNote] = useState('');
+
+  /* A decision can move the run to an active state (approve requests
+   * the rerun), so the status query refetches once; if the backend
+   * really moved, its refetchInterval resumes polling on its own. */
+  const resumeStatusPolling = (): void => {
+    queryClient.invalidateQueries({ queryKey: ['runs', runId, 'status'] });
+  };
 
   const approveMutation = useMutation({
     mutationFn: async (approvalNote: string) => {
@@ -30,6 +39,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
     },
     onSuccess: ({ result }) => {
       recordApproval({ status: 'approved', actor: result.actor, note: result.note });
+      resumeStatusPolling();
     },
   });
 
@@ -39,6 +49,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
     },
     onSuccess: (result) => {
       recordApproval({ status: 'rejected', actor: result.actor, note: result.note });
+      resumeStatusPolling();
     },
   });
 
@@ -77,16 +88,23 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
         {!!approval.note && <p className="mt-2 border-l-2 border-border pl-3 text-xs text-muted-foreground italic">"{approval.note}"</p>}
         <p className="mt-2.5 text-2xs text-faint-foreground">
           {approval.status === 'approved'
-            ? 'Rerun accepted. The live pipeline will apply the patch in a sandbox, rerun the tests, and produce the evidence pack; this fixture run stays at PATCH_PENDING.'
-            : 'The run returns to TRIAGED. Rejected patches never rerun.'}
+            ? '@pivanov: Rerun accepted. The live pipeline will apply the patch in a sandbox, rerun the tests, and produce the evidence pack; this fixture run stays at PATCH_PENDING.'
+            : '@pivanov: The run returns to TRIAGED. Rejected patches never rerun.'}
         </p>
       </div>
     );
   }
 
   return (
-    <div className="rounded-lg border bg-card p-3.5 shadow-soft">
+    <div className="rounded-lg border border-primary/35 bg-card p-4 shadow-lift">
       <div className="flex items-center gap-2.5">
+        <span aria-hidden="true" className="size-2 rounded-full bg-primary animate-attn-pulse dark:bg-primary-subtle" />
+        <h3 className="text-[15px] font-medium tracking-display">Waiting for your decision</h3>
+      </div>
+      <p className="mt-1.5 text-xs text-muted-foreground">
+        Codex proposes. <span className="font-medium text-primary dark:text-primary-subtle">You approve.</span> Nothing ships without you.
+      </p>
+      <div className="mt-3 flex items-center gap-2.5">
         <Button disabled={busy} onClick={() => openDecision('approve')}>
           {approveMutation.isPending ? 'Recording…' : 'Approve patch'}
         </Button>
@@ -99,9 +117,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
           {rejectMutation.isPending ? 'Recording…' : 'Reject patch'}
         </Button>
       </div>
-      <p className="mt-2 text-2xs text-faint-foreground">
-        Nothing is applied without you. Every decision is recorded with a note under {DEMO_ACTOR} in the audit trail.
-      </p>
+      <p className="mt-2.5 text-2xs text-faint-foreground">Every decision is recorded with a note under {DEMO_ACTOR} in the audit trail.</p>
       {(approveMutation.isError || rejectMutation.isError) && (
         <p className="mt-2 text-2xs text-destructive">The decision endpoint did not respond; try again.</p>
       )}

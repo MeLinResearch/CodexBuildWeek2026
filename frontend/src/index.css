@@ -153,8 +153,8 @@
     --sidebar-accent-foreground: #0a0a0a;
     --sidebar-border: rgba(10, 10, 10, 0.06);
     --sidebar-ring: rgba(67, 56, 202, 0.4);
-    --aurora-1: oklch(0.62 0.16 274 / 0.05);
-    --aurora-2: oklch(0.66 0.1 215 / 0.04);
+    --aurora-1: oklch(0.55 0.19 274 / 0.16);
+    --aurora-2: oklch(0.6 0.14 215 / 0.13);
 }
 
 [data-theme='dark'] {
@@ -207,8 +207,37 @@
     --sidebar-accent-foreground: #f0efed;
     --sidebar-border: rgba(255, 255, 255, 0.07);
     --sidebar-ring: rgba(165, 163, 247, 0.4);
-    --aurora-1: oklch(0.58 0.18 274 / 0.13);
-    --aurora-2: oklch(0.64 0.12 215 / 0.07);
+    --aurora-1: oklch(0.58 0.2 274 / 0.28);
+    --aurora-2: oklch(0.64 0.14 215 / 0.17);
+}
+
+/* Scroll edges dissolve into the background instead of hard-cutting;
+ * apply to a positioned container. Hidden on small screens. */
+@utility faded-bottom {
+  @apply after:pointer-events-none after:absolute after:inset-x-0 after:bottom-0 after:h-32;
+  @apply after:hidden md:after:block;
+  @apply after:bg-linear-to-t after:from-background after:to-transparent;
+}
+@utility faded-top {
+  @apply after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-32;
+  @apply after:hidden md:after:block;
+  @apply after:bg-linear-to-b after:from-background after:to-transparent;
+}
+@utility faded-vertical {
+  @apply before:pointer-events-none before:absolute before:inset-x-0 before:bottom-0 before:h-32;
+  @apply before:hidden md:before:block;
+  @apply before:bg-linear-to-t before:from-background before:to-transparent;
+  @apply after:pointer-events-none after:absolute after:inset-x-0 after:top-0 after:h-32;
+  @apply after:hidden md:after:block;
+  @apply after:bg-linear-to-b after:from-background after:to-transparent;
+}
+@utility faded-horizontal {
+  @apply before:pointer-events-none before:absolute before:inset-y-0 before:left-0 before:w-32;
+  @apply before:hidden md:before:block;
+  @apply before:bg-linear-to-r before:from-background before:from-10% before:to-transparent;
+  @apply after:pointer-events-none after:absolute after:inset-y-0 after:right-0 after:w-32;
+  @apply after:hidden md:after:block;
+  @apply after:bg-linear-to-l after:from-background after:from-10% after:to-transparent;
 }
 
 @layer base {
@@ -221,18 +250,83 @@
   html {
     @apply font-sans;
     }
+  /* Tailwind v4 preflight leaves buttons with the browser default
+   * cursor; restore pointer for anything clickable. */
+  button:not(:disabled),
+  [role='button']:not(:disabled) {
+    cursor: pointer;
+    }
 }
 
 @layer components {
-  /* A single, near-imperceptible tonal wash behind the app. */
+  /* The tonal wash behind the app, breathing on a slow cycle: two
+   * stacked layers carry the brand tones on opposite corners and
+   * crossfade into each other, so the colors gently trade places
+   * while drifting a few percent. Deliberately too slow to notice
+   * unless you watch for it. */
   .app-aurora {
     position: fixed;
     inset: 0;
     z-index: -10;
     pointer-events: none;
+    overflow: hidden;
+  }
+  .app-aurora::before,
+  .app-aurora::after {
+    content: '';
+    position: absolute;
+    /* Headroom so the drift never exposes an unpainted edge. */
+    inset: -20% -10%;
+    will-change: transform, opacity;
+  }
+  /* The layers run on different clocks (42s vs 58s, phase-shifted),
+   * so they drift in and out of sync like weather instead of a
+   * metronome; neither ever fully vanishes, so the wash never blacks
+   * out. Each layer also carries a faint low blob so the bottom of
+   * the viewport keeps some color. */
+  .app-aurora::before {
     background:
-      radial-gradient(50rem 40rem at 8% -10%, var(--aurora-1), transparent 60%),
-      radial-gradient(46rem 38rem at 100% -4%, var(--aurora-2), transparent 58%);
+      radial-gradient(50rem 40rem at 15% 10%, var(--aurora-1), transparent 60%),
+      radial-gradient(46rem 38rem at 92% 12%, var(--aurora-2), transparent 58%),
+      radial-gradient(44rem 30rem at 28% 90%, color-mix(in oklch, var(--aurora-2) 45%, transparent), transparent 60%);
+    animation: aurora-breathe-a 42s ease-in-out infinite;
+  }
+  .app-aurora::after {
+    background:
+      radial-gradient(50rem 40rem at 15% 10%, var(--aurora-2), transparent 60%),
+      radial-gradient(46rem 38rem at 92% 12%, var(--aurora-1), transparent 58%),
+      radial-gradient(44rem 30rem at 74% 90%, color-mix(in oklch, var(--aurora-1) 45%, transparent), transparent 60%);
+    opacity: 0.35;
+    animation: aurora-breathe-b 58s ease-in-out infinite;
+    animation-delay: -24s;
+  }
+  @keyframes aurora-breathe-a {
+    0%,
+    100% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      opacity: 0.35;
+      transform: translate3d(2%, 3%, 0) scale(1.06);
+    }
+  }
+  @keyframes aurora-breathe-b {
+    0%,
+    100% {
+      opacity: 0.35;
+      transform: translate3d(-2%, 2%, 0) scale(1.05);
+    }
+    50% {
+      opacity: 1;
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .app-aurora::before,
+    .app-aurora::after {
+      animation: none;
+    }
   }
   /* Mono eyebrow label: the design system's uppercase section label. */
   .eyebrow {

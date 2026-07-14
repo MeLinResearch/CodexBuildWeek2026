@@ -7,6 +7,7 @@ import { cn } from '@/lib/utils';
 import { fadeInUpVariants } from '@/lib/variants';
 
 interface IAgentStepProps {
+  id?: string;
   title: string;
   activity: string;
   status: TStepStatus | 'attn';
@@ -14,7 +15,7 @@ interface IAgentStepProps {
   children?: ReactNode;
 }
 
-const AgentStep = ({ title, activity, status, meta, children }: IAgentStepProps) => {
+const AgentStep = ({ id, title, activity, status, meta, children }: IAgentStepProps) => {
   const shouldReduceMotion = useReducedMotion();
 
   if (status === 'pending') {
@@ -26,10 +27,11 @@ const AgentStep = ({ title, activity, status, meta, children }: IAgentStepProps)
 
   return (
     <motion.section
+      id={id}
       variants={shouldReduceMotion ? undefined : fadeInUpVariants}
       initial={shouldReduceMotion ? undefined : 'hidden'}
       animate="visible"
-      className="relative pb-8 pl-9 last:pb-2"
+      className="relative scroll-mt-20 pb-8 pl-9 last:pb-2"
     >
       <span aria-hidden="true" className="absolute top-7 bottom-0 left-[11px] w-px bg-border" />
       <span
@@ -38,13 +40,13 @@ const AgentStep = ({ title, activity, status, meta, children }: IAgentStepProps)
           'absolute top-0.5 left-0 flex size-[23px] items-center justify-center rounded-full border bg-card shadow-soft',
           thinking && 'border-primary/30 text-primary dark:text-primary-subtle',
           (status === 'reading' || status === 'done') && 'border-success/30 text-success',
-          status === 'attn' && 'animate-attn-pulse border-warning/40 text-warning',
+          status === 'attn' && 'animate-attn-pulse border-primary/40 text-primary dark:text-primary-subtle',
         )}
       >
         {thinking ? (
           <LoaderCircle aria-hidden="true" className="size-3.5 animate-spin" />
         ) : status === 'attn' ? (
-          <span className="size-2 rounded-full bg-warning-indicator" />
+          <span className="size-2 rounded-full bg-primary dark:bg-primary-subtle" />
         ) : (
           <span className="size-2 rounded-full bg-success-indicator" />
         )}

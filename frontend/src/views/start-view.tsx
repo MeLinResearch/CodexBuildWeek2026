@@ -1,11 +1,11 @@
 import { useNavigate } from '@tanstack/react-router';
-import { FileUp } from 'lucide-react';
-import { motion, useReducedMotion } from 'motion/react';
+import { Check, FileUp, Play } from 'lucide-react';
+import { motion, useReducedMotion, type Variants } from 'motion/react';
 import { type DragEvent, useState } from 'react';
 
 import { DEMOS, type IDemo } from '@/lib/demos';
 import { cn } from '@/lib/utils';
-import { fadeInUpVariants, staggerContainerVariants, staggerItemVariants } from '@/lib/variants';
+import { fadeInUpVariants } from '@/lib/variants';
 import { type IDroppedFile, useRunUi } from '@/state/run-store';
 
 /* Dropped files select the demo set they belong to by filename. When
@@ -24,6 +24,31 @@ const matchDemo = (fileNames: string[]): IDemo | undefined => {
 
   return best?.demo;
 };
+
+/* The demo cards rise further and stagger slower than the shared
+ * timeline variants; with only three of them the sequence reads as
+ * intentional instead of a glitchy near-simultaneous fade. The
+ * container only orchestrates: fading it too would compound with the
+ * children's own opacity ramp. */
+const cardContainerVariants: Variants = {
+  hidden: {},
+  visible: {
+    transition: { staggerChildren: 0.18, delayChildren: 0.15 },
+  },
+};
+
+const cardItemVariants: Variants = {
+  hidden: { opacity: 0, y: 32 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    transition: { duration: 0.55, ease: [0.16, 1, 0.3, 1] },
+  },
+};
+
+/* What this demo is, readable in two seconds: deterministic, fixture
+ * mode, nothing sensitive leaves the machine. */
+const DEMO_FACTS = ['Deterministic fixture replay', 'No live data, no secrets', 'Validated against frozen contracts'];
 
 const readFiles = async (files: File[]): Promise<IDroppedFile[]> => {
   return Promise.all(
@@ -66,13 +91,24 @@ const StartView = () => {
         className="pt-6 pb-8 text-center"
       >
         <div className="eyebrow">Release assurance for bank migrations</div>
-        <h1 className="mx-auto mt-2 max-w-[560px] text-[34px] leading-[1.15] font-medium tracking-display">
+        <h1 className="mx-auto mt-2 text-[34px] leading-[1.15] font-medium tracking-display text-balance">
           Every migrated record, <span className="grad">proven and gated</span>
         </h1>
         <p className="mx-auto mt-3 max-w-[540px] text-sm leading-relaxed text-muted-foreground">
           The spec becomes executable tests. Every failure maps back to a requirement. Codex proposes the fix, and nothing ships without your
           approval.
         </p>
+        <div className="mt-5 flex flex-wrap items-center justify-center gap-2">
+          {DEMO_FACTS.map((fact) => (
+            <span
+              key={fact}
+              className="inline-flex items-center gap-1.5 rounded-4xl border bg-card/60 px-3 py-1 text-2xs font-medium text-muted-foreground"
+            >
+              <Check aria-hidden="true" className="size-3 text-success" />
+              {fact}
+            </span>
+          ))}
+        </div>
       </motion.div>
 
       <motion.div variants={shouldReduceMotion ? undefined : fadeInUpVariants} initial={shouldReduceMotion ? undefined : 'hidden'} animate="visible">
@@ -100,7 +136,7 @@ const StartView = () => {
 
       <motion.div
         className="mt-8 grid gap-4 lg:grid-cols-3"
-        variants={shouldReduceMotion ? undefined : staggerContainerVariants}
+        variants={shouldReduceMotion ? undefined : cardContainerVariants}
         initial={shouldReduceMotion ? undefined : 'hidden'}
         animate="visible"
       >
@@ -108,26 +144,27 @@ const StartView = () => {
           <motion.button
             key={demo.id}
             type="button"
-            variants={shouldReduceMotion ? undefined : staggerItemVariants}
+            variants={shouldReduceMotion ? undefined : cardItemVariants}
             onClick={() => {
               beginRun();
               navigate({ to: '/$runId', params: { runId: demo.runId } });
             }}
-            className="group flex flex-col rounded-xl border bg-card p-5 text-left transition-all hover:border-primary/35 hover:shadow-lift"
+            className="group flex flex-col rounded-xl border bg-card p-5 text-left transition-[border-color,box-shadow] duration-200 hover:border-primary/35 hover:shadow-lift"
           >
             <span className="font-mono text-3xs font-semibold tracking-eyebrow text-faint-foreground uppercase">{demo.runId}</span>
             <span className="mt-1.5 text-[15px] font-medium tracking-display">{demo.title}</span>
-            <span className="mt-0.5 text-2xs font-medium text-primary dark:text-primary-subtle">{demo.tagline}</span>
-            <span className="mt-2.5 flex-1 text-xs leading-relaxed text-muted-foreground">{demo.description}</span>
-            <span className="mt-4 flex flex-wrap gap-1.5">
+            <span className="mt-0.5 flex-1 text-2xs font-medium text-primary dark:text-primary-subtle">{demo.tagline}</span>
+            <span className="mt-4 flex flex-col gap-1.5">
               {demo.inputs.map((input) => (
-                <span key={input.name} className="rounded-sm bg-muted px-1.5 py-px font-mono text-4xs text-muted-foreground">
+                <span key={input.name} className="flex items-center gap-2 font-mono text-4xs text-muted-foreground">
+                  <span aria-hidden="true" className="size-1.5 shrink-0 rounded-full bg-primary/70 dark:bg-primary-subtle/70" />
                   {input.name}
                 </span>
               ))}
             </span>
-            <span className="mt-3.5 text-xs font-medium text-primary transition-transform group-hover:translate-x-0.5 dark:text-primary-subtle">
-              Run the demo →
+            <span className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-soft transition-[background-color,box-shadow] duration-200 group-hover:bg-primary/90 group-hover:shadow-lift">
+              <Play aria-hidden="true" className="size-3 fill-current" />
+              Run the demo
             </span>
           </motion.button>
         ))}
