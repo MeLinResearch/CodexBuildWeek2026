@@ -1,0 +1,96 @@
+[
+  {
+    "evidence_refs": [
+      "ART-007"
+    ],
+    "failure_ids": [
+      "FAIL-007"
+    ],
+    "patch_id": "PATCH-003",
+    "provenance": {
+      "client": "FixtureLLMClient",
+      "created_at": "2026-07-12T00:00:00Z",
+      "mode": "fixture",
+      "producer": "fixture",
+      "run_id": "RUN-003",
+      "schema_version": "2026-07-12.1",
+      "source_artifact_ids": [
+        "ART-001"
+      ],
+      "validation_status": "validated"
+    },
+    "requirement_id": "REQ-007",
+    "row_status": "patch_pending",
+    "test_id": "TEST-007"
+  },
+  {
+    "evidence_refs": [
+      "ART-008"
+    ],
+    "failure_ids": [
+      "FAIL-008"
+    ],
+    "patch_id": "PATCH-003",
+    "provenance": {
+      "client": "FixtureLLMClient",
+      "created_at": "2026-07-12T00:00:00Z",
+      "mode": "fixture",
+      "producer": "fixture",
+      "run_id": "RUN-003",
+      "schema_version": "2026-07-12.1",
+      "source_artifact_ids": [
+        "ART-001"
+      ],
+      "validation_status": "validated"
+    },
+    "requirement_id": "REQ-008",
+    "row_status": "patch_pending",
+    "test_id": "TEST-008"
+  },
+  {
+    "evidence_refs": [
+      "ART-009"
+    ],
+    "failure_ids": [
+      "FAIL-009"
+    ],
+    "patch_id": "PATCH-003",
+    "provenance": {
+      "client": "FixtureLLMClient",
+      "created_at": "2026-07-12T00:00:00Z",
+      "mode": "fixture",
+      "producer": "fixture",
+      "run_id": "RUN-003",
+      "schema_version": "2026-07-12.1",
+      "source_artifact_ids": [
+        "ART-001"
+      ],
+      "validation_status": "validated"
+    },
+    "requirement_id": "REQ-009",
+    "row_status": "patch_pending",
+    "test_id": "TEST-009"
+  },
+  {
+    "evidence_refs": [
+      "ART-010"
+    ],
+    "failure_ids": [],
+    "patch_id": "PATCH-003",
+    "provenance": {
+      "client": "FixtureLLMClient",
+      "created_at": "2026-07-12T00:00:00Z",
+      "mode": "fixture",
+      "producer": "fixture",
+      "run_id": "RUN-003",
+      "schema_version": "2026-07-12.1",
+      "source_artifact_ids": [
+        "ART-001"
+      ],
+      "validation_status": "validated"
+    },
+    "requirement_id": "REQ-010",
+    "row_status": "passed",
+    "test_id": "TEST-010"
+  }
+]

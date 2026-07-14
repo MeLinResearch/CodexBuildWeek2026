@@ -1,0 +1,22 @@
+{
+  "actual": "duplicate of BWR-1102",
+  "expected": "unique borrower_id",
+  "failure_id": "FAIL-009",
+  "field": "borrower_id",
+  "provenance": {
+    "client": "FixtureLLMClient",
+    "created_at": "2026-07-12T00:00:00Z",
+    "mode": "fixture",
+    "producer": "fixture",
+    "run_id": "RUN-003",
+    "schema_version": "2026-07-12.1",
+    "source_artifact_ids": [
+      "ART-001"
+    ],
+    "validation_status": "validated"
+  },
+  "record_hash": "sha256:fail009",
+  "record_id": "LOAN-007823",
+  "requirement_id": "REQ-009",
+  "severity": "blocking"
+}

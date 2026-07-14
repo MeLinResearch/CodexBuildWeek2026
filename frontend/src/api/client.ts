@@ -1,14 +1,25 @@
 import type failureFixture from '@/mocks/failed_record_FAIL-001.fixture.json';
 import type patchFixture from '@/mocks/patch_PATCH-001.fixture.json';
 import type runStatusFixture from '@/mocks/run_status.fixture.json';
-import summaryStatsFixture from '@/mocks/summary_stats.fixture.json';
 import type traceabilityMatrixFixture from '@/mocks/traceability_matrix.fixture.json';
 
 type TFailure = typeof failureFixture;
 type TPatch = typeof patchFixture;
 type TRunStatus = typeof runStatusFixture;
-type TSummaryStats = typeof summaryStatsFixture;
 type TTraceabilityMatrix = typeof traceabilityMatrixFixture;
+
+interface IApprovalResult {
+  patch_id: string;
+  status: 'approved' | 'rejected';
+  actor: string;
+  note: string | null;
+}
+
+interface IRerunResult {
+  run_id: string;
+  status: string;
+  mode: string;
+}
 
 type TApiRequestError = Error & {
   status: number;
@@ -24,10 +35,13 @@ const createApiRequestError = (url: string, status: number): TApiRequestError =>
   });
 };
 
-const getJson = async <TResponse>(url: string): Promise<TResponse> => {
+const requestJson = async <TResponse>(url: string, init?: RequestInit): Promise<TResponse> => {
   const response = await fetch(url, {
+    ...init,
     headers: {
       Accept: 'application/json',
+      ...(init?.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init?.headers,
     },
   });
 
@@ -40,21 +54,34 @@ const getJson = async <TResponse>(url: string): Promise<TResponse> => {
 };
 
 const api = {
-  runStatus: (): Promise<TRunStatus> => {
-    return getJson<TRunStatus>('/api/runs/RUN-001');
+  runStatus: (runId: string): Promise<TRunStatus> => {
+    return requestJson<TRunStatus>(`/api/runs/${runId}`);
   },
-  matrix: (): Promise<TTraceabilityMatrix> => {
-    return getJson<TTraceabilityMatrix>('/api/runs/RUN-001/matrix');
+  matrix: (runId: string): Promise<TTraceabilityMatrix> => {
+    return requestJson<TTraceabilityMatrix>(`/api/runs/${runId}/matrix`);
   },
-  failure: (): Promise<TFailure> => {
-    return getJson<TFailure>('/api/runs/RUN-001/failures/FAIL-001');
+  failure: (runId: string, failureId: string): Promise<TFailure> => {
+    return requestJson<TFailure>(`/api/runs/${runId}/failures/${failureId}`);
   },
-  patch: (): Promise<TPatch> => {
-    return getJson<TPatch>('/api/patches/PATCH-001');
+  patches: (runId: string): Promise<TPatch[]> => {
+    return requestJson<TPatch[]>(`/api/runs/${runId}/patches`);
   },
-  summaryStats: (): Promise<TSummaryStats> => {
-    return Promise.resolve(summaryStatsFixture);
+  approvePatch: (patchId: string, actor: string, note: string | null): Promise<IApprovalResult> => {
+    return requestJson<IApprovalResult>(`/api/patches/${patchId}/approve`, {
+      method: 'POST',
+      body: JSON.stringify({ actor, note }),
+    });
+  },
+  rejectPatch: (patchId: string, actor: string, note: string | null): Promise<IApprovalResult> => {
+    return requestJson<IApprovalResult>(`/api/patches/${patchId}/reject`, {
+      method: 'POST',
+      body: JSON.stringify({ actor, note }),
+    });
+  },
+  rerun: (runId: string): Promise<IRerunResult> => {
+    return requestJson<IRerunResult>(`/api/runs/${runId}/rerun`, { method: 'POST' });
   },
 };
 
+export type { TFailure, TPatch };
 export { api };

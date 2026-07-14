@@ -1,22 +1,52 @@
+import { Suspense, useRef } from 'react';
+
 import { ModelActionsPanel } from '@/components/model-actions-panel';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { ApprovalGate } from '@/screens/approval-gate';
-import { RecordDrilldown } from '@/screens/record-drilldown';
-import { RunComparison } from '@/screens/run-comparison';
-import { TraceabilityMatrix } from '@/screens/traceability-matrix';
+import { TopBar } from '@/components/top-bar';
+import { Skeleton } from '@/components/ui/skeleton';
+import { demoById } from '@/lib/demos';
+import { RunUiProvider, useRunUi } from '@/state/run-store';
+import { RunTimeline } from '@/views/run-timeline';
+import { StartView } from '@/views/start-view';
+
+const TimelineFallback = () => {
+  return (
+    <div className="mx-auto w-full max-w-[880px] space-y-4">
+      <Skeleton className="h-14 w-2/3" />
+      <Skeleton className="h-32 w-full" />
+      <Skeleton className="h-48 w-full" />
+    </div>
+  );
+};
+
+const Workspace = () => {
+  const { demoId } = useRunUi();
+  const demo = demoId ? demoById(demoId) : undefined;
+  const refMain = useRef<HTMLElement>(null);
+
+  return (
+    <div className="flex h-svh flex-col">
+      <TopBar />
+      <div className="relative flex flex-1 overflow-hidden">
+        <main ref={refMain} className="flex-1 overflow-y-auto px-6 py-6">
+          {demo ? (
+            <Suspense fallback={<TimelineFallback />}>
+              <RunTimeline key={demo.id} demo={demo} refScroll={refMain} />
+            </Suspense>
+          ) : (
+            <StartView />
+          )}
+        </main>
+      </div>
+      <ModelActionsPanel />
+    </div>
+  );
+};
 
 const Application = () => {
   return (
-    <main className="mx-auto flex w-full max-w-[1180px] flex-col gap-4 p-4 sm:p-6">
-      <div className="flex min-h-8 justify-end">
-        <ThemeToggle />
-      </div>
-      <ModelActionsPanel />
-      <TraceabilityMatrix />
-      <RecordDrilldown />
-      <ApprovalGate />
-      <RunComparison />
-    </main>
+    <RunUiProvider>
+      <Workspace />
+    </RunUiProvider>
   );
 };
 
