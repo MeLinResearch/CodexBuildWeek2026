@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
 import { ArrowDown } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { patchesQuery, traceabilityMatrixQuery } from '@/api/queries';
 import { Dot } from '@/components/dot';
@@ -17,7 +17,7 @@ import { Button } from '@/components/ui/button';
 import type { IDemo } from '@/lib/demos';
 import { mapFailuresToFiles, parsePatchFiles } from '@/lib/diff-hunks';
 import { type IStepTiming, useTimelineSequence } from '@/lib/use-timeline-sequence';
-import { useRunUi } from '@/state/run-store';
+import { type TReplayState, useRunUi } from '@/state/run-store';
 
 /* Paced for a human watching: each step thinks with a spinner first,
  * then its results hold long enough to actually read. */
@@ -29,6 +29,11 @@ const STEP_TIMINGS: IStepTiming[] = [
   { thinkMs: 2000, readMs: 4600 },
 ];
 
+/* Contract run state reached once N steps have landed their results;
+ * the header chip walks through these as the replay advances. The
+ * tests step covers generation and execution, so it lands EXECUTED. */
+const REPLAY_STATES: TReplayState[] = ['CREATED', 'INGESTED', 'MANIFEST_READY', 'EXECUTED', 'TRIAGED', 'PATCH_PENDING'];
+
 const FOLLOW_THRESHOLD_PX = 140;
 
 interface IRunTimelineProps {
@@ -38,7 +43,7 @@ interface IRunTimelineProps {
 
 const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   const shouldReduceMotion = useReducedMotion();
-  const { droppedFiles, approval } = useRunUi();
+  const { droppedFiles, approval, setReplayState } = useRunUi();
   const { data: matrix } = useSuspenseQuery(traceabilityMatrixQuery(demo.runId));
   const { data: patches } = useSuspenseQuery(patchesQuery(demo.runId));
 
@@ -82,8 +87,14 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     };
   }, [refScroll]);
 
-  const revealedCount =
-    STEP_TIMINGS.filter((_, index) => statusFor(index) === 'reading' || statusFor(index) === 'done').length + (finished ? 1 : 0) + (approval ? 1 : 0);
+  const stepsRevealed = STEP_TIMINGS.filter((_, index) => statusFor(index) === 'reading' || statusFor(index) === 'done').length;
+  const revealedCount = stepsRevealed + (finished ? 1 : 0) + (approval ? 1 : 0);
+
+  /* Layout effect so the chip never paints the run's final state
+   * before the replay resets it to CREATED on mount. */
+  useLayoutEffect(() => {
+    setReplayState(REPLAY_STATES[stepsRevealed] ?? 'PATCH_PENDING');
+  }, [stepsRevealed, setReplayState]);
 
   const scrollToEnd = useCallback((): void => {
     refEnd.current?.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth', block: 'end' });

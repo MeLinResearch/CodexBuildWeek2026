@@ -180,14 +180,14 @@ const MatrixBlock = ({ runId, fixPaths, dataFileName, onHoverFailure }: IMatrixB
         <Table>
           <TableHeader>
             <TableRow className="hover:bg-transparent">
-              <TableHead className="pl-4">Requirement</TableHead>
-              <TableHead>Test</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className={showPatchColumns ? undefined : 'pr-4'}>Failures</TableHead>
+              <TableHead className="w-full pl-4">Requirement</TableHead>
+              <TableHead className="w-px">Test</TableHead>
+              <TableHead className="w-px">Status</TableHead>
+              <TableHead className={cn('w-px text-right', !showPatchColumns && 'pr-4')}>Failures</TableHead>
               {showPatchColumns && (
                 <>
-                  <TableHead>Patch</TableHead>
-                  <TableHead className="pr-4">Approval</TableHead>
+                  <TableHead className="w-px">Patch</TableHead>
+                  <TableHead className="w-px pr-4">Approval</TableHead>
                 </>
               )}
             </TableRow>
@@ -222,7 +222,7 @@ const MatrixBlock = ({ runId, fixPaths, dataFileName, onHoverFailure }: IMatrixB
                         </span>
                         <span>
                           <span className="block font-mono text-xs font-semibold whitespace-nowrap">{row.requirement_id}</span>
-                          <span className="mt-0.5 block max-w-[300px] text-2xs whitespace-normal text-muted-foreground">
+                          <span className="mt-0.5 block text-2xs whitespace-normal text-muted-foreground">
                             {failureMeta(row.requirement_id).requirementText}
                           </span>
                         </span>
@@ -234,10 +234,12 @@ const MatrixBlock = ({ runId, fixPaths, dataFileName, onHoverFailure }: IMatrixB
                     <TableCell>
                       <StatusChip status={row.row_status} />
                     </TableCell>
-                    <TableCell className={showPatchColumns ? undefined : 'pr-4'}>
-                      {row.failure_ids.map((failureId) => (
-                        <IdChip key={failureId} id={failureId} tone="fail" />
-                      ))}
+                    <TableCell className={cn('text-right', !showPatchColumns && 'pr-4')}>
+                      <span className="inline-flex justify-end gap-1.5">
+                        {row.failure_ids.map((failureId) => (
+                          <IdChip key={failureId} id={failureId} tone="fail" />
+                        ))}
+                      </span>
                     </TableCell>
                     {showPatchColumns && (
                       <>

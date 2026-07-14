@@ -5,11 +5,12 @@ import { api, type TPatch } from '@/api/client';
 import { StatusChip } from '@/components/status-chip';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { useRunUi } from '@/state/run-store';
 
 const DEMO_ACTOR = 'demo_user';
+
+type TDecision = 'approve' | 'reject';
 
 interface IDecisionBlockProps {
   runId: string;
@@ -18,12 +19,11 @@ interface IDecisionBlockProps {
 
 const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   const { approval, recordApproval } = useRunUi();
+  const [decision, setDecision] = useState<TDecision | null>(null);
   const [note, setNote] = useState('');
-  const [rejectNote, setRejectNote] = useState('');
-  const [rejectOpen, setRejectOpen] = useState(false);
 
   const approveMutation = useMutation({
-    mutationFn: async (approvalNote: string | null) => {
+    mutationFn: async (approvalNote: string) => {
       const result = await api.approvePatch(patch.patch_id, DEMO_ACTOR, approvalNote);
       const rerun = await api.rerun(runId);
       return { result, rerun };
@@ -34,7 +34,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   });
 
   const rejectMutation = useMutation({
-    mutationFn: (approvalNote: string | null) => {
+    mutationFn: (approvalNote: string) => {
       return api.rejectPatch(patch.patch_id, DEMO_ACTOR, approvalNote);
     },
     onSuccess: (result) => {
@@ -43,19 +43,25 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   });
 
   const busy = approveMutation.isPending || rejectMutation.isPending;
+  const isApprove = decision === 'approve';
 
-  /* A note typed in the main input counts as the rejection note; the
-   * dialog only appears when there is nothing to record yet. */
-  const handleReject = (): void => {
+  const openDecision = (next: TDecision): void => {
+    setNote('');
+    setDecision(next);
+  };
+
+  const confirmDecision = (): void => {
     const trimmed = note.trim();
 
-    if (trimmed) {
-      rejectMutation.mutate(trimmed);
+    if (!trimmed) {
       return;
     }
 
-    setRejectNote('');
-    setRejectOpen(true);
+    if (isApprove) {
+      approveMutation.mutate(trimmed);
+    } else {
+      rejectMutation.mutate(trimmed);
+    }
   };
 
   if (approval) {
@@ -81,51 +87,60 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   return (
     <div className="rounded-lg border bg-card p-3.5 shadow-soft">
       <div className="flex items-center gap-2.5">
-        <Input
-          placeholder="Approval note (optional, recorded in the audit trail)"
-          value={note}
-          disabled={busy}
-          onChange={(event) => setNote(event.target.value)}
-        />
-        <Dialog open={rejectOpen} onOpenChange={setRejectOpen}>
-          <Button
-            variant="outline"
-            disabled={busy}
-            className="text-destructive hover:bg-destructive-soft hover:text-destructive"
-            onClick={handleReject}
-          >
-            Reject
-          </Button>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Reject {patch.patch_id}</DialogTitle>
-              <DialogDescription>
-                A note is required: rejections are part of the audit trail. The run returns to TRIAGED and the patch never reruns.
-              </DialogDescription>
-            </DialogHeader>
-            <Textarea placeholder="Why is this patch rejected?" value={rejectNote} onChange={(event) => setRejectNote(event.target.value)} />
-            <DialogFooter>
-              <DialogClose render={<Button variant="ghost">Cancel</Button>} />
-              <DialogClose
-                render={
-                  <Button variant="destructive" disabled={rejectNote.trim() === ''} onClick={() => rejectMutation.mutate(rejectNote.trim() || null)}>
-                    Reject patch
-                  </Button>
-                }
-              />
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
-        <Button disabled={busy} onClick={() => approveMutation.mutate(note.trim() || null)}>
+        <Button disabled={busy} onClick={() => openDecision('approve')}>
           {approveMutation.isPending ? 'Recording…' : 'Approve patch'}
+        </Button>
+        <Button
+          variant="outline"
+          disabled={busy}
+          className="text-destructive hover:bg-destructive-soft hover:text-destructive"
+          onClick={() => openDecision('reject')}
+        >
+          {rejectMutation.isPending ? 'Recording…' : 'Reject patch'}
         </Button>
       </div>
       <p className="mt-2 text-2xs text-faint-foreground">
-        Nothing is applied without you. Approving records {DEMO_ACTOR} in the audit trail and requests the rerun.
+        Nothing is applied without you. Every decision is recorded with a note under {DEMO_ACTOR} in the audit trail.
       </p>
       {(approveMutation.isError || rejectMutation.isError) && (
         <p className="mt-2 text-2xs text-destructive">The decision endpoint did not respond; try again.</p>
       )}
+      <Dialog
+        open={decision !== null}
+        onOpenChange={(open) => {
+          if (!open) {
+            setDecision(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>
+              {isApprove ? 'Approve' : 'Reject'} {patch.patch_id}
+            </DialogTitle>
+            <DialogDescription>
+              {isApprove
+                ? `A note is required: approvals are part of the audit trail. Approving records ${DEMO_ACTOR} and requests the rerun.`
+                : 'A note is required: rejections are part of the audit trail. The run returns to TRIAGED and the patch never reruns.'}
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            placeholder={isApprove ? 'Why is this patch approved?' : 'Why is this patch rejected?'}
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+          />
+          <DialogFooter>
+            <DialogClose render={<Button variant="ghost">Cancel</Button>} />
+            <DialogClose
+              render={
+                <Button variant={isApprove ? 'default' : 'destructive'} disabled={note.trim() === ''} onClick={confirmDecision}>
+                  {isApprove ? 'Approve patch' : 'Reject patch'}
+                </Button>
+              }
+            />
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
