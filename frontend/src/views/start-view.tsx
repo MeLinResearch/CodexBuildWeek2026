@@ -1,3 +1,4 @@
+import { useNavigate } from '@tanstack/react-router';
 import { FileUp } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import { type DragEvent, useState } from 'react';
@@ -34,7 +35,8 @@ const readFiles = async (files: File[]): Promise<IDroppedFile[]> => {
 
 const StartView = () => {
   const shouldReduceMotion = useReducedMotion();
-  const { selectDemo } = useRunUi();
+  const navigate = useNavigate();
+  const { beginRun } = useRunUi();
   const [dragging, setDragging] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
 
@@ -51,7 +53,8 @@ const StartView = () => {
     }
 
     setDropError(null);
-    selectDemo(demo.id, await readFiles(files));
+    beginRun(await readFiles(files));
+    navigate({ to: '/$runId', params: { runId: demo.runId } });
   };
 
   return (
@@ -106,7 +109,10 @@ const StartView = () => {
             key={demo.id}
             type="button"
             variants={shouldReduceMotion ? undefined : staggerItemVariants}
-            onClick={() => selectDemo(demo.id)}
+            onClick={() => {
+              beginRun();
+              navigate({ to: '/$runId', params: { runId: demo.runId } });
+            }}
             className="group flex flex-col rounded-xl border bg-card p-5 text-left transition-all hover:border-primary/35 hover:shadow-lift"
           >
             <span className="font-mono text-3xs font-semibold tracking-eyebrow text-faint-foreground uppercase">{demo.runId}</span>

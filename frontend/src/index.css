@@ -78,6 +78,7 @@
     --shadow-lift: 0 4px 12px rgba(10, 10, 10, 0.04);
     --shadow-dot-warning: 0 0 0 2.5px rgba(245, 158, 11, 0.22);
     --shadow-dot-primary: 0 0 0 2.5px rgba(67, 56, 202, 0.2);
+    --ease-fluid: cubic-bezier(0.3, 0, 0, 1);
     --animate-attn-pulse: attn-pulse 2s ease-in-out infinite;
     --animate-row-flash: row-flash 0.9s ease-out 1;
 
@@ -105,14 +106,14 @@
     color-scheme: light;
     /* design-system.md palette: off-white canvas, white surfaces,
      * ink text scale, hairline borders, single indigo accent. */
-    --background: #fafaf9;
+    --background: oklch(0.986 0.002 275);
     --foreground: #0a0a0a;
     --card: #ffffff;
     --card-foreground: #0a0a0a;
     --popover: #ffffff;
     --popover-foreground: #0a0a0a;
-    --primary: #4338ca;
-    --primary-foreground: #ffffff;
+    --primary: oklch(0.52 0.16 274);
+    --primary-foreground: oklch(0.99 0.002 275);
     --secondary: #f7f6f4;
     --secondary-foreground: #0a0a0a;
     --muted: #f4f3ef;
@@ -123,7 +124,7 @@
     --border: rgba(10, 10, 10, 0.06);
     --input: rgba(10, 10, 10, 0.08);
     --ring: rgba(67, 56, 202, 0.4);
-    --surface-sunken: #f7f6f4;
+    --surface-sunken: oklch(0.974 0.003 275);
     --faint-foreground: #8a8a85;
     --soft-foreground: #3a3a37;
     --ink: #0a0a0a;
@@ -152,20 +153,22 @@
     --sidebar-accent-foreground: #0a0a0a;
     --sidebar-border: rgba(10, 10, 10, 0.06);
     --sidebar-ring: rgba(67, 56, 202, 0.4);
+    --aurora-1: oklch(0.62 0.16 274 / 0.05);
+    --aurora-2: oklch(0.66 0.1 215 / 0.04);
 }
 
 [data-theme='dark'] {
     color-scheme: dark;
     /* Dark derivation approved in the design spec: warm near-black
      * canvas, lifted indigo for text accents, solid indigo buttons. */
-    --background: #0f0f0e;
+    --background: oklch(0.168 0.008 275);
     --foreground: #f0efed;
-    --card: #161615;
+    --card: oklch(0.206 0.009 275);
     --card-foreground: #f0efed;
-    --popover: #161615;
+    --popover: oklch(0.206 0.009 275);
     --popover-foreground: #f0efed;
-    --primary: #4338ca;
-    --primary-foreground: #ffffff;
+    --primary: oklch(0.62 0.19 274);
+    --primary-foreground: oklch(0.99 0.002 275);
     --secondary: #131312;
     --secondary-foreground: #f0efed;
     --muted: #22221f;
@@ -176,7 +179,7 @@
     --border: rgba(255, 255, 255, 0.07);
     --input: rgba(255, 255, 255, 0.11);
     --ring: rgba(165, 163, 247, 0.4);
-    --surface-sunken: #131312;
+    --surface-sunken: oklch(0.246 0.01 275);
     --faint-foreground: #6b6a64;
     --soft-foreground: #b8b7b1;
     --ink: #f0efed;
@@ -204,6 +207,8 @@
     --sidebar-accent-foreground: #f0efed;
     --sidebar-border: rgba(255, 255, 255, 0.07);
     --sidebar-ring: rgba(165, 163, 247, 0.4);
+    --aurora-1: oklch(0.58 0.18 274 / 0.13);
+    --aurora-2: oklch(0.64 0.12 215 / 0.07);
 }
 
 @layer base {
@@ -219,6 +224,16 @@
 }
 
 @layer components {
+  /* A single, near-imperceptible tonal wash behind the app. */
+  .app-aurora {
+    position: fixed;
+    inset: 0;
+    z-index: -10;
+    pointer-events: none;
+    background:
+      radial-gradient(50rem 40rem at 8% -10%, var(--aurora-1), transparent 60%),
+      radial-gradient(46rem 38rem at 100% -4%, var(--aurora-2), transparent 58%);
+  }
   /* Mono eyebrow label: the design system's uppercase section label. */
   .eyebrow {
     @apply font-mono text-3xs font-semibold uppercase tracking-eyebrow text-faint-foreground;

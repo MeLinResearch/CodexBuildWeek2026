@@ -115,9 +115,9 @@ const DEMOS: IDemo[] = [
   },
 ];
 
-const demoById = (id: string): IDemo | undefined => {
-  return DEMOS.find((demo) => demo.id === id);
+const demoByRunId = (runId: string): IDemo | undefined => {
+  return DEMOS.find((demo) => demo.runId === runId);
 };
 
 export type { IDemo, IDemoInput };
-export { DEMOS, demoById };
+export { DEMOS, demoByRunId };

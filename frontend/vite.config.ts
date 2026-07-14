@@ -13,10 +13,10 @@ export default defineConfig({
   },
   server: {
     host: '127.0.0.1',
-    port: 7000,
+    port: 9000,
     strictPort: true,
     proxy: {
-      '/api': 'http://127.0.0.1:7001',
+      '/api': 'http://127.0.0.1:9001',
     },
   },
 });
