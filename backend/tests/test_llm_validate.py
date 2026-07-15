@@ -50,6 +50,7 @@ def test_validate_rejects_invalid_created_at_format():
 
     assert "provenance" in exc_info.value.path
     assert "created_at" in exc_info.value.path
+    assert "control_manifest.schema.json" in str(exc_info.value)
 
 
 def test_unknown_schema_raises_file_not_found():

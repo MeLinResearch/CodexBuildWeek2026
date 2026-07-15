@@ -12,10 +12,9 @@ from app.llm.client import JsonObject
 
 CONTRACTS_DIR = REPO_ROOT / "contracts"
 CONTROL_MANIFEST_SCHEMA = "control_manifest.schema.json"
-FORMAT_CHECKER = FormatChecker()
 
 
-@FORMAT_CHECKER.checks("date-time")
+@FormatChecker.cls_checks("date-time")
 def _is_date_time(instance: object) -> bool:
     if not isinstance(instance, str):
         return True
@@ -69,7 +68,12 @@ def validate_output(schema_name: str, payload: JsonObject) -> JsonObject:
     store = _contract_store()
     resolver = RefResolver(base_uri=schema_path.as_uri(), referrer=schema, store=store)
     try:
-        Draft202012Validator(schema, resolver=resolver, format_checker=FORMAT_CHECKER).validate(payload)
+        validator = Draft202012Validator(
+            schema,
+            resolver=resolver,
+            format_checker=FormatChecker(),
+        )
+        validator.validate(payload)
     except ValidationError as error:
         raise LLMValidationError(schema_name, error.message, tuple(error.path)) from error
     return payload
