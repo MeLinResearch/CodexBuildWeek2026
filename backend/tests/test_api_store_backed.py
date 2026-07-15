@@ -153,3 +153,97 @@ def test_no_live_env_needed(monkeypatch, tmp_path):
 
     _post_fixture()
     assert client.get("/api/runs/RUN-001").status_code == 200
+
+
+def _matrix_statuses():
+    return {row["row_status"] for row in client.get("/api/runs/RUN-001/matrix").json()}
+
+
+def test_approval_persists_patch_status_run_state_and_matrix(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+    assert client.get("/api/runs/RUN-001").json()["state"] == "PATCH_PENDING"
+
+    response = client.post(
+        "/api/patches/PATCH-001/approve",
+        json={"actor": "demo_user", "note": "looks good"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "patch_id": "PATCH-001",
+        "status": "approved",
+        "actor": "demo_user",
+        "note": "looks good",
+    }
+    assert client.get("/api/patches/PATCH-001").json()["status"] == "approved"
+    assert client.get("/api/runs/RUN-001").json()["state"] == "PATCH_APPROVED"
+    assert _matrix_statuses() == {"patch_approved"}
+    assert "approved" not in _matrix_statuses()
+    assert client.post(
+        "/api/patches/PATCH-001/approve",
+        json={"actor": "demo_user", "note": "again"},
+    ).status_code == 409
+    assert client.post(
+        "/api/patches/PATCH-001/reject",
+        json={"actor": "demo_user", "note": "nope"},
+    ).status_code == 409
+
+
+def test_rejection_persists_patch_status_run_state_and_matrix(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+
+    response = client.post(
+        "/api/patches/PATCH-001/reject",
+        json={"actor": "demo_user", "note": "not safe"},
+    )
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "patch_id": "PATCH-001",
+        "status": "rejected",
+        "actor": "demo_user",
+        "note": "not safe",
+    }
+    assert client.get("/api/patches/PATCH-001").json()["status"] == "rejected"
+    assert client.get("/api/runs/RUN-001").json()["state"] == "PATCH_REJECTED"
+    assert _matrix_statuses() == {"failed"}
+
+
+def test_unknown_patch_approval_returns_404(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+
+    response = client.post(
+        "/api/patches/PATCH-404/approve",
+        json={"actor": "demo_user", "note": "missing"},
+    )
+
+    assert response.status_code == 404
+
+
+def test_rerun_requires_approval_then_persists_evidence_ready_and_applied(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+    assert client.post("/api/runs/RUN-001/rerun").status_code == 409
+    client.post(
+        "/api/patches/PATCH-001/approve",
+        json={"actor": "demo_user", "note": "ready"},
+    )
+
+    response = client.post("/api/runs/RUN-001/rerun")
+
+    assert response.status_code == 200
+    assert response.json() == {
+        "run_id": "RUN-001",
+        "status": "rerun complete",
+        "state": "EVIDENCE_READY",
+        "mode": "fixture",
+    }
+    assert client.get("/api/runs/RUN-001").json()["state"] == "EVIDENCE_READY"
+    assert client.get("/api/patches/PATCH-001").json()["status"] == "applied"
+    assert _matrix_statuses() == {"rerun_passed"}
+    evidence = client.get("/api/runs/RUN-001/evidence")
+    assert evidence.status_code == 200
+    assert "Fixture evidence, no live model calls" in evidence.text

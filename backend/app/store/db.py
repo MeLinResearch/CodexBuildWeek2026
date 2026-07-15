@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import sqlite3
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Literal
 
 from app import config
 from app.store.models import (
@@ -217,6 +217,42 @@ class Store:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM patches WHERE run_id = ? ORDER BY patch_id", (run_id,)).fetchall()
         return [self._patch(row) for row in rows]
+
+    def set_patch_decision(
+        self, patch_id: str, status: Literal["approved", "rejected"], actor: str
+    ) -> PatchRow:
+        if status not in {"approved", "rejected"}:
+            raise ValueError("patch decision status must be approved or rejected")
+        at = self.clock()
+        with self.connect() as conn:
+            conn.execute(
+                """
+                UPDATE patches
+                SET status = ?, approved_by = ?, approved_at = ?
+                WHERE patch_id = ?
+                """,
+                (status, actor, at, patch_id),
+            )
+            row = conn.execute("SELECT * FROM patches WHERE patch_id = ?", (patch_id,)).fetchone()
+        if row is None:
+            raise LookupError(f"Patch not found: {patch_id}")
+        return self._patch(row)
+
+    def mark_patch_applied(self, patch_id: str) -> PatchRow:
+        at = self.clock()
+        with self.connect() as conn:
+            conn.execute(
+                """
+                UPDATE patches
+                SET status = ?, applied_at = ?
+                WHERE patch_id = ?
+                """,
+                ("applied", at, patch_id),
+            )
+            row = conn.execute("SELECT * FROM patches WHERE patch_id = ?", (patch_id,)).fetchone()
+        if row is None:
+            raise LookupError(f"Patch not found: {patch_id}")
+        return self._patch(row)
 
     def insert_artifact(self, row: ArtifactRow) -> ArtifactRow:
         with self.connect() as conn:

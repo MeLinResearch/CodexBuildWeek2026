@@ -17,7 +17,7 @@ def test_fixture_endpoints_without_openai_key(monkeypatch, tmp_path):
     assert client.get("/api/runs/RUN-001/patches").status_code == 200
     assert client.get("/api/patches/PATCH-001").status_code == 200
     assert client.post("/api/patches/PATCH-001/approve", json={"actor": "demo_user", "note": "optional"}).json()["status"] == "approved"
-    assert client.post("/api/patches/PATCH-001/reject", json={"actor": "demo_user", "note": "optional"}).json()["status"] == "rejected"
+    assert client.post("/api/patches/PATCH-001/reject", json={"actor": "demo_user", "note": "optional"}).status_code == 409
     assert client.post("/api/runs/RUN-001/rerun").status_code == 200
     evidence = client.get("/api/runs/RUN-001/evidence")
     assert evidence.status_code == 200
