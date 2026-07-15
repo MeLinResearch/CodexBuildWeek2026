@@ -4,10 +4,9 @@ import copy
 import json
 
 import pytest
-from jsonschema import ValidationError
 
 from app.config import FIXTURES_DIR
-from app.llm.validate import validate_control_manifest
+from app.llm.validate import LLMValidationError, load_schema, validate_control_manifest, validate_output
 
 
 def _control_manifest_fixture():
@@ -15,23 +14,39 @@ def _control_manifest_fixture():
         return json.load(handle)
 
 
-def test_validate_control_manifest_accepts_frozen_fixture():
+def test_validate_control_manifest_fixture_passes():
     payload = _control_manifest_fixture()
 
-    assert validate_control_manifest(payload) is payload
+    assert validate_output("control_manifest.schema.json", payload) is payload
 
 
-def test_validate_control_manifest_rejects_model_shaped_output_with_extra_fields():
+def test_validate_rejects_extra_fields():
     payload = copy.deepcopy(_control_manifest_fixture())
     payload["unexpected_model_field"] = "not in the frozen contract"
 
-    with pytest.raises(ValidationError):
-        validate_control_manifest(payload)
+    with pytest.raises(LLMValidationError) as exc_info:
+        validate_output("control_manifest.schema.json", payload)
+
+    assert "control_manifest.schema.json" in str(exc_info.value)
 
 
-def test_validate_control_manifest_resolves_nested_provenance_contract_refs():
+def test_validate_rejects_invalid_provenance_client():
     payload = copy.deepcopy(_control_manifest_fixture())
-    del payload["requirements"][0]["provenance"]["client"]
+    payload["provenance"]["client"] = "BogusClient"
 
-    with pytest.raises(ValidationError):
-        validate_control_manifest(payload)
+    with pytest.raises(LLMValidationError) as exc_info:
+        validate_output("control_manifest.schema.json", payload)
+
+    assert "provenance" in exc_info.value.path
+    assert "client" in exc_info.value.path
+
+
+def test_unknown_schema_raises_file_not_found():
+    with pytest.raises(FileNotFoundError):
+        load_schema("missing.schema.json")
+
+
+def test_validate_control_manifest_compatibility_wrapper_returns_same_payload():
+    payload = _control_manifest_fixture()
+
+    assert validate_control_manifest(payload) is payload
