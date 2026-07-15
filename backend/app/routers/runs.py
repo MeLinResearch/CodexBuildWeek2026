@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from app.config import PATCH_ID_FIXTURE, RUN_ID_FIXTURE
 from app.pipeline.mock_pipeline import run_fixture_pipeline
 from app.store.db import Store
+from app.store.state_machine import InvalidTransitionError, RunNotFoundError, transition_run
 
 router = APIRouter(prefix="/api")
 
@@ -44,6 +45,17 @@ def require_run(run_id: str):
     if run is None:
         raise HTTPException(status_code=404, detail="run not found")
     return run
+
+
+def _matrix_row_status(patch_status: str) -> str:
+    status_by_patch_status = {
+        "pending": "patch_pending",
+        "approved": "patch_approved",
+        "rejected": "failed",
+        "applied": "rerun_passed",
+        "apply_failed": "failed",
+    }
+    return status_by_patch_status.get(patch_status, "failed")
 
 
 def _patch_payload(patch):
@@ -104,7 +116,7 @@ def get_matrix(run_id: str):
                 "test_id": test.test_id,
                 "failure_ids": failure_ids,
                 "patch_id": PATCH_ID_FIXTURE,
-                "row_status": "patch_pending" if patch.status == "pending" else patch.status,
+                "row_status": _matrix_row_status(patch.status),
                 "evidence_refs": [test.output_ref] if test.output_ref is not None else [],
                 "provenance": test.provenance,
             }
@@ -139,5 +151,21 @@ def get_patches(run_id: str):
 
 @router.post("/runs/{run_id}/rerun")
 def rerun(run_id: str):
-    require_run(run_id)
-    return {"run_id": run_id, "status": "rerun accepted", "mode": "fixture"}
+    run = require_run(run_id)
+    if run.state != "PATCH_APPROVED":
+        raise HTTPException(status_code=409, detail="run is not approved for rerun")
+    store = _store()
+    try:
+        transition_run(store, run_id, "RERUNNING", actor="api")
+        store.mark_patch_applied(PATCH_ID_FIXTURE)
+        transition_run(store, run_id, "EVIDENCE_READY", actor="api")
+    except InvalidTransitionError as exc:
+        raise HTTPException(status_code=409, detail=str(exc)) from exc
+    except (RunNotFoundError, LookupError) as exc:
+        raise HTTPException(status_code=404, detail=str(exc)) from exc
+    return {
+        "run_id": run_id,
+        "status": "rerun complete",
+        "state": "EVIDENCE_READY",
+        "mode": "fixture",
+    }

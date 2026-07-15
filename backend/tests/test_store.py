@@ -253,3 +253,50 @@ def test_delete_cascade_smoke_test(tmp_path):
     assert s.list_tests("RUN-001") == []
     assert s.list_failures("RUN-001") == []
     assert s.list_patches("RUN-001") == []
+
+
+def test_set_patch_decision_persists_approved_status_actor_and_time(tmp_path):
+    s = store(tmp_path, clock=lambda: "2026-07-15T01:02:03Z")
+    s.insert_run(run_row())
+    s.insert_patch(patch_row())
+
+    patch = s.set_patch_decision("PATCH-001", "approved", "demo_user")
+
+    assert patch.status == "approved"
+    assert patch.approved_by == "demo_user"
+    assert patch.approved_at == "2026-07-15T01:02:03Z"
+    assert patch.applied_at is None
+    assert s.get_patch("PATCH-001") == patch
+
+
+def test_set_patch_decision_persists_rejected_status_actor_and_time(tmp_path):
+    s = store(tmp_path, clock=lambda: "2026-07-15T01:02:03Z")
+    s.insert_run(run_row())
+    s.insert_patch(patch_row())
+
+    patch = s.set_patch_decision("PATCH-001", "rejected", "demo_user")
+
+    assert patch.status == "rejected"
+    assert patch.approved_by == "demo_user"
+    assert patch.approved_at == "2026-07-15T01:02:03Z"
+    assert patch.applied_at is None
+
+
+def test_mark_patch_applied_persists_applied_status_and_time(tmp_path):
+    s = store(tmp_path, clock=lambda: "2026-07-15T01:02:03Z")
+    s.insert_run(run_row())
+    s.insert_patch(patch_row())
+
+    patch = s.mark_patch_applied("PATCH-001")
+
+    assert patch.status == "applied"
+    assert patch.applied_at == "2026-07-15T01:02:03Z"
+
+
+def test_patch_update_methods_raise_for_unknown_patch(tmp_path):
+    s = store(tmp_path)
+
+    with pytest.raises(LookupError):
+        s.set_patch_decision("PATCH-404", "approved", "demo_user")
+    with pytest.raises(LookupError):
+        s.mark_patch_applied("PATCH-404")
