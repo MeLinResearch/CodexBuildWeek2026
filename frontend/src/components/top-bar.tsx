@@ -127,8 +127,12 @@ const TopBar = () => {
               }
             />
             <TooltipContent>
-              Codex {runStatus.mode}, task {runStatus.mode === 'fixture' ? 'fixture' : runStatus.run_id}, sandbox read-only, GPT-5.6 calls{' '}
-              {runStatus.mode === 'fixture' ? 'fixture' : 'live'}. All outputs schema-validated against the frozen contracts.
+              {/* @pivanov: spec §2 wants actual GPT-5.6 call counts; the live
+               * branch needs a real count once the backend exposes one. The
+               * fixture count of live calls is honestly zero. */}
+              Codex {runStatus.mode}, task {runStatus.mode === 'fixture' ? 'fixture' : runStatus.run_id}, sandbox read-only,{' '}
+              {runStatus.mode === 'fixture' ? '0 live GPT-5.6 calls (fixture replay)' : 'GPT-5.6 calls live'}. All outputs schema-validated against
+              the frozen contracts.
             </TooltipContent>
           </Tooltip>
         )}

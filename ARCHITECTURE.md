@@ -101,10 +101,12 @@ frontend/
 └── src/
     ├── api/client.ts     # HANDWRITTEN typed client (no generator)
     ├── screens/          # TraceabilityMatrix, RecordDrilldown,
-    │                    # ApprovalGate, RunComparison
+    │                    # ApprovalGate
     ├── components/       # ModelActionsPanel, StatusChip
     └── mocks/            # fixture JSON conforming to contracts/
 ```
+
+RunComparison is deferred until the live API produces rerun data: a real before/after is what makes comparison honest, and by then it likely grows into run history (list past runs, compare any two, possibly grouped per project) rather than a single screen.
 
 ---
 
