@@ -69,7 +69,7 @@ const DownloadsBlock = ({ demo, patch }: IDownloadsBlockProps) => {
         ))}
       </div>
       <p className="mt-2.5 text-2xs text-faint-foreground">
-        The evidence pack is served by the fixture API; the diff and matrix are the exact contract objects from this run.
+        The evidence pack is served by FastAPI from the persisted run. The diff and matrix are the exact contract objects from this run.
       </p>
     </div>
   );

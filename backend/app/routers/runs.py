@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app import config
 from app.config import PATCH_ID_FIXTURE, RUN_ID_FIXTURE
 from app.pipeline.mock_pipeline import run_fixture_pipeline
 from app.store.db import Store
@@ -10,7 +11,7 @@ router = APIRouter(prefix="/api")
 
 RUN_PROVENANCE_FALLBACK = {
     "client": "FixtureLLMClient",
-    "created_at": "2026-07-12T00:00:00Z",
+    "created_at": config.FIXTURE_CLOCK_AT,
     "mode": "fixture",
     "producer": "fixture",
     "run_id": "RUN-001",
@@ -29,7 +30,7 @@ class RunRequest(BaseModel):
 
 
 def _store() -> Store:
-    return Store()
+    return Store(clock=config.fixture_clock)
 
 
 def _require_fixture_run_id(run_id: str) -> None:

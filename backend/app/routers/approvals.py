@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
+from app import config
 from app.config import PATCH_ID_FIXTURE
 from app.store.db import Store
 from app.store.state_machine import InvalidTransitionError, RunNotFoundError, transition_run
@@ -14,7 +15,7 @@ class ApprovalRequest(BaseModel):
 
 
 def _store() -> Store:
-    store = Store()
+    store = Store(clock=config.fixture_clock)
     store.init_schema()
     return store
 
