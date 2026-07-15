@@ -22,6 +22,9 @@ const STATE_TONES: Record<string, string> = {
   PATCH_PENDING: 'text-warning',
   PATCH_APPROVED: 'text-success',
   PATCH_REJECTED: 'text-destructive',
+  EVIDENCE_READY: 'text-success',
+  DONE: 'text-success',
+  FAILED: 'text-destructive',
 };
 
 const TopBar = () => {
@@ -30,18 +33,15 @@ const TopBar = () => {
   const { runId } = useParams({ strict: false });
   const { reset, approval, replayState } = useRunUi();
   const demo = runId ? demoByRunId(runId) : undefined;
-  /* Falls back to RUN-001 on the start page so the mode pill (frozen
-   * requirement: mode, sandbox policy, and validation status stay
-   * visible on every screen) always has data behind it. */
-  const statusResult = useQuery(runStatusQuery(demo?.runId ?? 'RUN-001'));
+  const statusResult = useQuery({
+    ...runStatusQuery(demo?.runId ?? 'RUN-001'),
+    enabled: demo !== undefined,
+  });
   const runStatus = statusResult.data;
 
-  /* The chip follows the replay step by step, so it waits for the
-   * timeline to publish a state instead of falling back to the run's
-   * final fetched state (which would flash before CREATED on mount).
-   * A recorded decision overrides the replay. */
   const decisionState = approval ? (approval.status === 'approved' ? 'PATCH_APPROVED' : 'PATCH_REJECTED') : null;
-  const displayState = decisionState ?? replayState;
+  const persistedDecisionState = decisionState && runStatus?.state !== 'PATCH_PENDING' ? runStatus?.state : null;
+  const displayState = persistedDecisionState ?? decisionState ?? replayState;
 
   /* The header hugs the content column on the start page and widens
    * to the viewport on a run page. maxWidth animates in pixels because
@@ -127,9 +127,6 @@ const TopBar = () => {
               }
             />
             <TooltipContent>
-              {/* @pivanov: spec §2 wants actual GPT-5.6 call counts; the live
-               * branch needs a real count once the backend exposes one. The
-               * fixture count of live calls is honestly zero. */}
               Codex {runStatus.mode}, task {runStatus.mode === 'fixture' ? 'fixture' : runStatus.run_id}, sandbox read-only,{' '}
               {runStatus.mode === 'fixture' ? '0 live GPT-5.6 calls (fixture replay)' : 'GPT-5.6 calls live'}. All outputs schema-validated against
               the frozen contracts.

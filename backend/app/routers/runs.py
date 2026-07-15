@@ -58,45 +58,7 @@ def _matrix_row_status(patch_status: str) -> str:
     return status_by_patch_status.get(patch_status, "failed")
 
 
-def _patch_payload(patch):
-    return {
-        "patch_id": patch.patch_id,
-        "run_id": patch.run_id,
-        "failure_ids": patch.failure_ids,
-        "diff": patch.diff,
-        "status": patch.status,
-        "provenance": patch.provenance,
-    }
-
-
-@router.post("/runs")
-def create_run(request: RunRequest):
-    if request.mode != "fixture":
-        raise HTTPException(status_code=400, detail="live mode is not implemented in scaffold")
-    run_fixture_pipeline(_store(), run_id=RUN_ID_FIXTURE, actor="api")
-    return {"run_id": RUN_ID_FIXTURE}
-
-
-@router.get("/runs/{run_id}")
-def get_run(run_id: str):
-    run = require_run(run_id)
-    requirements = _store().list_requirements(run_id)
-    provenance = requirements[0].provenance if requirements else RUN_PROVENANCE_FALLBACK
-    return {
-        "run_id": run.run_id,
-        "state": run.state,
-        "mode": run.mode,
-        "schema_version": run.schema_version,
-        "created_at": run.created_at,
-        "updated_at": run.updated_at,
-        "provenance": provenance,
-    }
-
-
-@router.get("/runs/{run_id}/matrix")
-def get_matrix(run_id: str):
-    require_run(run_id)
-    store = _store()
+def build_matrix(store: Store, run_id: str) -> list[dict]:
     tests = store.list_tests(run_id)
     failures = store.list_failures(run_id)
     patch = store.get_patch(PATCH_ID_FIXTURE)
@@ -122,6 +84,51 @@ def get_matrix(run_id: str):
             }
         )
     return rows
+
+
+def _patch_payload(patch):
+    return {
+        "patch_id": patch.patch_id,
+        "run_id": patch.run_id,
+        "failure_ids": patch.failure_ids,
+        "diff": patch.diff,
+        "status": patch.status,
+        "provenance": patch.provenance,
+    }
+
+
+@router.post("/runs")
+def create_run(request: RunRequest):
+    if request.mode != "fixture":
+        raise HTTPException(status_code=400, detail="live mode is not implemented in scaffold")
+    store = _store()
+    store.init_schema()
+    store.delete_run(RUN_ID_FIXTURE)
+    run_fixture_pipeline(store, run_id=RUN_ID_FIXTURE, actor="api")
+    return {"run_id": RUN_ID_FIXTURE}
+
+
+@router.get("/runs/{run_id}")
+def get_run(run_id: str):
+    run = require_run(run_id)
+    requirements = _store().list_requirements(run_id)
+    provenance = requirements[0].provenance if requirements else RUN_PROVENANCE_FALLBACK
+    return {
+        "run_id": run.run_id,
+        "state": run.state,
+        "mode": run.mode,
+        "schema_version": run.schema_version,
+        "created_at": run.created_at,
+        "updated_at": run.updated_at,
+        "provenance": provenance,
+    }
+
+
+@router.get("/runs/{run_id}/matrix")
+def get_matrix(run_id: str):
+    require_run(run_id)
+    store = _store()
+    return build_matrix(store, run_id)
 
 
 @router.get("/runs/{run_id}/failures/{failure_id}")

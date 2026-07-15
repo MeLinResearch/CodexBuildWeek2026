@@ -1,16 +1,16 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { Check, FileUp, Play } from 'lucide-react';
 import { motion, useReducedMotion, type Variants } from 'motion/react';
 import { type DragEvent, useState } from 'react';
 
+import { api } from '@/api/client';
 import { DEMOS, type IDemo } from '@/lib/demos';
 import { cn } from '@/lib/utils';
 import { fadeInUpVariants } from '@/lib/variants';
 import { type IDroppedFile, useRunUi } from '@/state/run-store';
 
-/* Dropped files select the demo set they belong to by filename. When
- * the live pipeline lands, this same handler posts them to /api/runs
- * instead of matching locally. */
+/* Dropped files must match the authoritative core banking fixture before the FastAPI run is created. */
 const matchDemo = (fileNames: string[]): IDemo | undefined => {
   let best: { demo: IDemo; hits: number } | undefined;
 
@@ -26,7 +26,7 @@ const matchDemo = (fileNames: string[]): IDemo | undefined => {
 };
 
 /* The demo cards rise further and stagger slower than the shared
- * timeline variants; with only three of them the sequence reads as
+ * timeline variants; with the single authoritative card the motion reads as
  * intentional instead of a glitchy near-simultaneous fade. The
  * container only orchestrates: fading it too would compound with the
  * children's own opacity ramp. */
@@ -61,25 +61,40 @@ const readFiles = async (files: File[]): Promise<IDroppedFile[]> => {
 const StartView = () => {
   const shouldReduceMotion = useReducedMotion();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { beginRun } = useRunUi();
   const [dragging, setDragging] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
 
+  const createRunMutation = useMutation({
+    mutationFn: async (droppedFiles: IDroppedFile[] | undefined) => {
+      const result = await api.createFixtureRun();
+      return { result, droppedFiles };
+    },
+    onSuccess: ({ result, droppedFiles }) => {
+      queryClient.removeQueries({ queryKey: ['runs', result.run_id] });
+      beginRun(droppedFiles);
+      navigate({ to: '/$runId', params: { runId: result.run_id } });
+    },
+  });
+
   const handleDrop = async (event: DragEvent<HTMLDivElement>): Promise<void> => {
     event.preventDefault();
+    if (createRunMutation.isPending) {
+      return;
+    }
     setDragging(false);
 
     const files = [...event.dataTransfer.files];
     const demo = matchDemo(files.map((file) => file.name));
 
     if (!demo) {
-      setDropError('These files do not match a demo input set. Live mode will accept arbitrary inputs once the pipeline lands.');
+      setDropError('These files do not match the core banking demo input set.');
       return;
     }
 
     setDropError(null);
-    beginRun(await readFiles(files));
-    navigate({ to: '/$runId', params: { runId: demo.runId } });
+    createRunMutation.mutate(await readFiles(files));
   };
 
   return (
@@ -127,15 +142,16 @@ const StartView = () => {
         >
           <FileUp aria-hidden="true" className={cn('size-6', dragging ? 'text-primary dark:text-primary-subtle' : 'text-faint-foreground')} />
           <p className="text-sm font-medium">Drop a conversion spec, source data, and target schema</p>
-          <p className="text-2xs text-faint-foreground">
-            Fixture mode recognizes the demo input sets below. Live mode will send your files to the pipeline.
-          </p>
+          <p className="text-2xs text-faint-foreground">Fixture mode recognizes the core banking input files and starts the persisted FastAPI run.</p>
           {!!dropError && <p className="mt-1 max-w-[440px] text-2xs text-warning">{dropError}</p>}
+          {createRunMutation.isError && (
+            <p className="mt-1 max-w-[440px] text-2xs text-destructive">The FastAPI demo runtime did not start the run. Try again.</p>
+          )}
         </section>
       </motion.div>
 
       <motion.div
-        className="mt-8 grid gap-4 lg:grid-cols-3"
+        className="mx-auto mt-8 grid max-w-[560px] gap-4"
         variants={shouldReduceMotion ? undefined : cardContainerVariants}
         initial={shouldReduceMotion ? undefined : 'hidden'}
         animate="visible"
@@ -146,10 +162,11 @@ const StartView = () => {
             type="button"
             variants={shouldReduceMotion ? undefined : cardItemVariants}
             onClick={() => {
-              beginRun();
-              navigate({ to: '/$runId', params: { runId: demo.runId } });
+              setDropError(null);
+              createRunMutation.mutate(undefined);
             }}
-            className="group flex flex-col rounded-xl border bg-card p-5 text-left transition-[border-color,box-shadow] duration-200 hover:border-primary/35 hover:shadow-lift"
+            disabled={createRunMutation.isPending}
+            className="group flex flex-col rounded-xl border bg-card p-5 text-left transition-[border-color,box-shadow] duration-200 hover:border-primary/35 hover:shadow-lift disabled:cursor-wait disabled:opacity-70"
           >
             <span className="font-mono text-3xs font-semibold tracking-eyebrow text-faint-foreground uppercase">{demo.runId}</span>
             <span className="mt-1.5 text-[15px] font-medium tracking-display">{demo.title}</span>
@@ -164,7 +181,7 @@ const StartView = () => {
             </span>
             <span className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-soft transition-[background-color,box-shadow] duration-200 group-hover:bg-primary/90 group-hover:shadow-lift">
               <Play aria-hidden="true" className="size-3 fill-current" />
-              Run the demo
+              {createRunMutation.isPending ? 'Starting demo…' : 'Run the demo'}
             </span>
           </motion.button>
         ))}
