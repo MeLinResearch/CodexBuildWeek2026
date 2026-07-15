@@ -124,8 +124,8 @@ def test_evidence_uses_store_data(monkeypatch, tmp_path):
     html = client.get("/api/runs/RUN-001/evidence").text
     for expected in [
         "Release Assurance Evidence Pack",
-        "run_id RUN-001",
-        "mode fixture",
+        "<dt>run_id</dt><dd>RUN-001</dd>",
+        "<dt>mode</dt><dd>fixture</dd>",
         "preserve account identifiers verbatim",
         "debits equal credits by branch",
         "no silent value substitution",
