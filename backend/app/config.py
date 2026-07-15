@@ -13,6 +13,11 @@ GPT_MODEL_NAME = "gpt-5.6"
 CODEX_TASK_ID_FIXTURE = "fixture"
 RUN_ID_FIXTURE = "RUN-001"
 PATCH_ID_FIXTURE = "PATCH-001"
+FIXTURE_CLOCK_AT = "2026-07-12T00:00:00Z"
+
+
+def fixture_clock() -> str:
+    return FIXTURE_CLOCK_AT
 
 
 def default_clock() -> str:

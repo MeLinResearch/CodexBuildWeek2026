@@ -24,11 +24,8 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   const [decision, setDecision] = useState<TDecision | null>(null);
   const [note, setNote] = useState('');
 
-  /* A decision can move the run to an active state (approve requests
-   * the rerun), so the status query refetches once; if the backend
-   * really moved, its refetchInterval resumes polling on its own. */
-  const resumeStatusPolling = (): void => {
-    queryClient.invalidateQueries({ queryKey: ['runs', runId, 'status'] });
+  const refreshRunData = (): void => {
+    queryClient.invalidateQueries({ queryKey: ['runs', runId] });
   };
 
   const approveMutation = useMutation({
@@ -39,7 +36,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
     },
     onSuccess: ({ result }) => {
       recordApproval({ status: 'approved', actor: result.actor, note: result.note });
-      resumeStatusPolling();
+      refreshRunData();
     },
   });
 
@@ -49,7 +46,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
     },
     onSuccess: (result) => {
       recordApproval({ status: 'rejected', actor: result.actor, note: result.note });
-      resumeStatusPolling();
+      refreshRunData();
     },
   });
 
@@ -88,8 +85,8 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
         {!!approval.note && <p className="mt-2 border-l-2 border-border pl-3 text-xs text-muted-foreground italic">"{approval.note}"</p>}
         <p className="mt-2.5 text-2xs text-faint-foreground">
           {approval.status === 'approved'
-            ? '@pivanov: Rerun accepted. The live pipeline will apply the patch in a sandbox, rerun the tests, and produce the evidence pack; this fixture run stays at PATCH_PENDING.'
-            : '@pivanov: The run returns to TRIAGED. Rejected patches never rerun.'}
+            ? 'Patch applied in the deterministic fixture sandbox. The rerun passed and the evidence pack is ready.'
+            : 'Patch rejected. No rerun was performed, and the decision remains in the audit trail.'}
         </p>
       </div>
     );
@@ -136,8 +133,8 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
             </DialogTitle>
             <DialogDescription>
               {isApprove
-                ? `A note is required: approvals are part of the audit trail. Approving records ${DEMO_ACTOR} and requests the rerun.`
-                : 'A note is required: rejections are part of the audit trail. The run returns to TRIAGED and the patch never reruns.'}
+                ? 'A note is required. Approval records melinda.emerson, applies the deterministic fixture patch, reruns the tests, and produces the evidence pack.'
+                : 'A note is required. Rejection records melinda.emerson and prevents the patch from being applied or rerun.'}
             </DialogDescription>
           </DialogHeader>
           <Textarea

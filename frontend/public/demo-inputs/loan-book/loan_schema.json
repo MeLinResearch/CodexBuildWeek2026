@@ -1,4 +1,0 @@
-{
-  "required": ["borrower_id", "next_payment_date", "accrued_interest"],
-  "type": "object"
-}

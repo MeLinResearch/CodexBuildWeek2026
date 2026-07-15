@@ -300,3 +300,32 @@ def test_patch_update_methods_raise_for_unknown_patch(tmp_path):
         s.set_patch_decision("PATCH-404", "approved", "demo_user")
     with pytest.raises(LookupError):
         s.mark_patch_applied("PATCH-404")
+
+
+def test_delete_run_cascades_and_reports_result(tmp_path):
+    s = store(tmp_path)
+    s.insert_run(run_row(state="PATCH_PENDING"))
+    s.insert_requirement(requirement_row())
+    s.insert_test(make_test_row())
+    s.insert_failure(failure_row())
+    s.insert_patch(patch_row())
+    s.insert_artifact(artifact_row())
+    s.insert_state_transition("RUN-001", "CREATED", "PATCH_PENDING", "api")
+
+    assert s.get_run("RUN-001") is not None
+    assert s.list_requirements("RUN-001")
+    assert s.list_tests("RUN-001")
+    assert s.list_failures("RUN-001")
+    assert s.list_patches("RUN-001")
+    assert s.list_state_transitions("RUN-001")
+    assert s.list_artifacts("RUN-001")
+
+    assert s.delete_run("RUN-001") is True
+    assert s.get_run("RUN-001") is None
+    assert s.list_requirements("RUN-001") == []
+    assert s.list_tests("RUN-001") == []
+    assert s.list_failures("RUN-001") == []
+    assert s.list_patches("RUN-001") == []
+    assert s.list_state_transitions("RUN-001") == []
+    assert s.list_artifacts("RUN-001") == []
+    assert s.delete_run("RUN-001") is False

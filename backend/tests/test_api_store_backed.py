@@ -247,3 +247,88 @@ def test_rerun_requires_approval_then_persists_evidence_ready_and_applied(monkey
     evidence = client.get("/api/runs/RUN-001/evidence")
     assert evidence.status_code == 200
     assert "Fixture evidence, no live model calls" in evidence.text
+
+
+def test_post_resets_completed_fixture_run(monkeypatch, tmp_path):
+    db_path = _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+    client.post("/api/patches/PATCH-001/approve", json={"actor": "melinda.emerson", "note": "ready"})
+    assert client.post("/api/runs/RUN-001/rerun").json()["state"] == "EVIDENCE_READY"
+
+    _post_fixture()
+
+    store = Store(db_path)
+    assert store.get_run("RUN-001").state == "PATCH_PENDING"
+    assert store.get_patch("PATCH-001").status == "pending"
+    assert len(store.list_requirements("RUN-001")) == 3
+    assert len(store.list_tests("RUN-001")) == 3
+    assert len(store.list_failures("RUN-001")) == 3
+    assert len(store.list_patches("RUN-001")) == 1
+
+
+def test_evidence_after_completed_rerun(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+    client.post("/api/patches/PATCH-001/approve", json={"actor": "melinda.emerson", "note": "ready"})
+    client.post("/api/runs/RUN-001/rerun")
+
+    html = client.get("/api/runs/RUN-001/evidence").text
+
+    for expected in [
+        "Release Assurance Evidence Pack",
+        "Run provenance",
+        "Summary",
+        "Traceability matrix",
+        "Failure evidence",
+        "Proposed patch",
+        "Decision record",
+        "State transition audit trail",
+        "Fixture evidence, no live model calls",
+        "EVIDENCE_READY",
+        "melinda.emerson",
+        "PATCH-001",
+        "FAIL-001",
+        "PATCH_APPROVED",
+        "RERUNNING",
+    ]:
+        assert expected in html
+
+
+def test_evidence_after_rejection(monkeypatch, tmp_path):
+    _use_tmp_db(monkeypatch, tmp_path)
+    _post_fixture()
+    client.post("/api/patches/PATCH-001/reject", json={"actor": "melinda.emerson", "note": "not safe"})
+
+    html = client.get("/api/runs/RUN-001/evidence").text
+
+    assert "PATCH_REJECTED" in html
+    assert "melinda.emerson" in html
+    assert "No rerun was performed" in html
+
+
+def test_repeated_identical_completed_fixture_runs_produce_identical_evidence(monkeypatch, tmp_path):
+    db_path = _use_tmp_db(monkeypatch, tmp_path)
+    approval_request = {"actor": "melinda.emerson", "note": "Deterministic approval"}
+
+    _post_fixture()
+    client.post("/api/patches/PATCH-001/approve", json=approval_request)
+    first_rerun = client.post("/api/runs/RUN-001/rerun")
+    assert first_rerun.json()["state"] == "EVIDENCE_READY"
+    first_html = client.get("/api/runs/RUN-001/evidence").text
+
+    _post_fixture()
+    client.post("/api/patches/PATCH-001/approve", json=approval_request)
+    second_rerun = client.post("/api/runs/RUN-001/rerun")
+    assert second_rerun.json()["state"] == "EVIDENCE_READY"
+    second_html = client.get("/api/runs/RUN-001/evidence").text
+
+    assert first_html == second_html
+
+    store = Store(db_path)
+    run = store.get_run("RUN-001")
+    patch = store.get_patch("PATCH-001")
+    assert run.created_at == config.FIXTURE_CLOCK_AT
+    assert run.updated_at == config.FIXTURE_CLOCK_AT
+    assert patch.approved_at == config.FIXTURE_CLOCK_AT
+    assert patch.applied_at == config.FIXTURE_CLOCK_AT
+    assert all(transition.at == config.FIXTURE_CLOCK_AT for transition in store.list_state_transitions("RUN-001"))

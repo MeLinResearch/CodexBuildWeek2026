@@ -1,7 +1,7 @@
 PYTHON ?= python3
 BUN ?= bun
 
-.PHONY: setup test demo dev smoke
+.PHONY: setup test demo dev smoke runtime-smoke
 
 setup:
 	$(PYTHON) -m pip install --upgrade pip
@@ -18,9 +18,10 @@ demo:
 	./scripts/demo.sh
 
 dev:
-	@echo "Mock API: http://127.0.0.1:9001"
-	@echo "Frontend: http://127.0.0.1:9000"
-	cd frontend && $(BUN) run dev
+	./scripts/dev.sh
+
+runtime-smoke:
+	$(PYTHON) scripts/runtime_smoke.py
 
 smoke:
 	$(MAKE) setup

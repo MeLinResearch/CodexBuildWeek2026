@@ -101,6 +101,11 @@ class Store:
             row = conn.execute("SELECT * FROM runs WHERE run_id = ?", (run_id,)).fetchone()
         return self._run(row) if row else None
 
+    def delete_run(self, run_id: str) -> bool:
+        with self.connect() as conn:
+            cursor = conn.execute("DELETE FROM runs WHERE run_id = ?", (run_id,))
+        return cursor.rowcount == 1
+
     def list_runs(self) -> list[RunRow]:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM runs ORDER BY run_id").fetchall()

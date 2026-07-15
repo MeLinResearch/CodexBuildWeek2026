@@ -1,7 +1,7 @@
 {
   "$schema": "https://unpkg.com/knip@6/schema.json",
-  "entry": ["server/index.ts", "server/**/*.test.ts"],
-  "project": ["src/**/*.{ts,tsx}", "server/**/*.ts"],
+  "entry": ["src/main.tsx", "src/**/*.test.ts", "src/**/*.test.tsx"],
+  "project": ["src/**/*.{ts,tsx}"],
   "ignoreDependencies": ["@fontsource-variable/geist", "@fontsource-variable/geist-mono", "shadcn", "tailwindcss", "tw-animate-css"],
   "ignoreIssues": {
     "src/components/ui/**": ["exports", "types"]

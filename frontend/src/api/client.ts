@@ -8,6 +8,10 @@ type TPatch = typeof patchFixture;
 type TRunStatus = typeof runStatusFixture;
 type TTraceabilityMatrix = typeof traceabilityMatrixFixture;
 
+interface ICreateRunResult {
+  run_id: string;
+}
+
 interface IApprovalResult {
   patch_id: string;
   status: 'approved' | 'rejected';
@@ -18,7 +22,8 @@ interface IApprovalResult {
 interface IRerunResult {
   run_id: string;
   status: string;
-  mode: string;
+  state: 'EVIDENCE_READY';
+  mode: 'fixture';
 }
 
 type TApiRequestError = Error & {
@@ -54,6 +59,12 @@ const requestJson = async <TResponse>(url: string, init?: RequestInit): Promise<
 };
 
 const api = {
+  createFixtureRun: (): Promise<ICreateRunResult> => {
+    return requestJson<ICreateRunResult>('/api/runs', {
+      method: 'POST',
+      body: JSON.stringify({ mode: 'fixture', fixture_set: 'core-banking' }),
+    });
+  },
   runStatus: (runId: string): Promise<TRunStatus> => {
     return requestJson<TRunStatus>(`/api/runs/${runId}`);
   },

@@ -7,8 +7,8 @@ import { api } from '@/api/client';
  * (PATCH_PENDING) or is terminal; the approve/reject mutations
  * invalidate the query, and the first refetch resumes the interval
  * if the backend moved the run to an active state. Fixture runs are
- * born at PATCH_PENDING, so polling stops immediately in the demo. */
-const IDLE_STATES = new Set(['PATCH_PENDING', 'DONE', 'FAILED']);
+ * EVIDENCE_READY after approval plus rerun. */
+const IDLE_STATES = new Set(['PATCH_PENDING', 'PATCH_REJECTED', 'EVIDENCE_READY', 'DONE', 'FAILED']);
 const POLL_INTERVAL_MS = 1000;
 
 const runStatusQuery = (runId: string) => {
