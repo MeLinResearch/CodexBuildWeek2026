@@ -41,12 +41,23 @@ def test_validate_rejects_invalid_provenance_client():
     assert "client" in exc_info.value.path
 
 
+def test_validate_rejects_invalid_created_at_format():
+    payload = copy.deepcopy(_control_manifest_fixture())
+    payload["provenance"]["created_at"] = "not-a-date"
+
+    with pytest.raises(LLMValidationError) as exc_info:
+        validate_output("control_manifest.schema.json", payload)
+
+    assert "provenance" in exc_info.value.path
+    assert "created_at" in exc_info.value.path
+
+
 def test_unknown_schema_raises_file_not_found():
     with pytest.raises(FileNotFoundError):
         load_schema("missing.schema.json")
 
 
-def test_validate_control_manifest_compatibility_wrapper_returns_same_payload():
+def test_validate_control_manifest_wrapper_passes():
     payload = _control_manifest_fixture()
 
     assert validate_control_manifest(payload) is payload

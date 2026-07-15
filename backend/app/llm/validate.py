@@ -1,16 +1,29 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from jsonschema import Draft202012Validator, RefResolver, ValidationError
+from jsonschema import Draft202012Validator, FormatChecker, RefResolver, ValidationError
 
 from app.config import REPO_ROOT
 from app.llm.client import JsonObject
 
 CONTRACTS_DIR = REPO_ROOT / "contracts"
 CONTROL_MANIFEST_SCHEMA = "control_manifest.schema.json"
+FORMAT_CHECKER = FormatChecker()
+
+
+@FORMAT_CHECKER.checks("date-time")
+def _is_date_time(instance: object) -> bool:
+    if not isinstance(instance, str):
+        return True
+    try:
+        datetime.fromisoformat(instance.replace("Z", "+00:00"))
+    except ValueError:
+        return False
+    return True
 
 
 class LLMValidationError(ValueError):
@@ -42,6 +55,7 @@ def _contract_store() -> dict[str, JsonObject]:
     for path in CONTRACTS_DIR.glob("*.schema.json"):
         schema = _load_json_object(path)
         store[path.name] = schema
+        store[path.as_uri()] = schema
         schema_id = schema.get("$id")
         if isinstance(schema_id, str):
             store[schema_id] = schema
@@ -55,7 +69,7 @@ def validate_output(schema_name: str, payload: JsonObject) -> JsonObject:
     store = _contract_store()
     resolver = RefResolver(base_uri=schema_path.as_uri(), referrer=schema, store=store)
     try:
-        Draft202012Validator(schema, resolver=resolver).validate(payload)
+        Draft202012Validator(schema, resolver=resolver, format_checker=FORMAT_CHECKER).validate(payload)
     except ValidationError as error:
         raise LLMValidationError(schema_name, error.message, tuple(error.path)) from error
     return payload
