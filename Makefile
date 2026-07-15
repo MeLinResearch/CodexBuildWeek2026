@@ -18,8 +18,8 @@ demo:
 	./scripts/demo.sh
 
 dev:
-	@echo "Mock API: http://127.0.0.1:7001"
-	@echo "Frontend: http://127.0.0.1:7000"
+	@echo "Mock API: http://127.0.0.1:9001"
+	@echo "Frontend: http://127.0.0.1:9000"
 	cd frontend && $(BUN) run dev
 
 smoke:
