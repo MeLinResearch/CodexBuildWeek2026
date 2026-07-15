@@ -109,10 +109,25 @@ describe('Hono fixture API', () => {
     expect(await response.json()).toEqual({ run_id: 'RUN-002', status: 'rerun accepted', mode: 'fixture' });
   });
 
-  it('serves an evidence pack per run', async () => {
+  it('serves an audit-ready evidence pack per run', async () => {
     const response = await app.request('/api/runs/RUN-003/evidence');
 
     expect(response.status).toBe(200);
-    expect(await response.text()).toContain('RUN-003');
+    const html = await response.text();
+    expect(html).toContain('RUN-003');
+    expect(html).toContain('Run provenance');
+    expect(html).toContain('Traceability matrix');
+    expect(html).toContain('Failure evidence');
+    expect(html).toContain('FAIL-007');
+    expect(html).toContain('PATCH-003');
+    expect(html).toContain('Decision record');
+    expect(html).toContain('Awaiting human decision');
+  });
+
+  it('renders the evidence pack deterministically', async () => {
+    const first = await (await app.request('/api/runs/RUN-001/evidence')).text();
+    const second = await (await app.request('/api/runs/RUN-001/evidence')).text();
+
+    expect(first).toBe(second);
   });
 });

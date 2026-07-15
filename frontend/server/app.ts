@@ -1,5 +1,4 @@
 import { Hono } from 'hono';
-
 import failure001Fixture from '@/mocks/failed_record_FAIL-001.fixture.json';
 import failure002Fixture from '@/mocks/failed_record_FAIL-002.fixture.json';
 import failure003Fixture from '@/mocks/failed_record_FAIL-003.fixture.json';
@@ -18,6 +17,7 @@ import patch003Fixture from '@/mocks/run-003/patch_PATCH-003.fixture.json';
 import runStatus003Fixture from '@/mocks/run-003/run_status.fixture.json';
 import matrix003Fixture from '@/mocks/run-003/traceability_matrix.fixture.json';
 import matrix001Fixture from '@/mocks/traceability_matrix.fixture.json';
+import { renderEvidenceHtml } from './evidence';
 
 type TRunDataset = {
   status: typeof runStatus001Fixture;
@@ -142,10 +142,7 @@ app.get('/api/runs/:runId/evidence', (context) => {
     return context.json({ detail: 'run not found' }, 404);
   }
 
-  const requirements = run.matrix.map((row) => `<li>${row.requirement_id}</li>`).join('');
-  const failures = run.failures.map((failure) => `<li>${failure.failure_id}</li>`).join('');
-  const html = `<!doctype html><html><head><title>Release Assurance Evidence Pack</title></head><body><h1>Release Assurance Evidence Pack</h1><p>run_id ${run.status.run_id}</p><p>mode fixture</p><ul>${requirements}</ul><ul>${failures}</ul><p>${run.patch.patch_id}</p><p>Fixture evidence, no live model calls</p></body></html>`;
-  return context.html(html);
+  return context.html(renderEvidenceHtml(run));
 });
 
 export { app };
