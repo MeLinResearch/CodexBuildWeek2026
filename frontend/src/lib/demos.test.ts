@@ -1,6 +1,5 @@
-import { readFile } from 'node:fs/promises';
-
 import { describe, expect, test } from 'bun:test';
+import { readFile } from 'node:fs/promises';
 
 import { DEMOS } from '@/lib/demos';
 
@@ -17,14 +16,8 @@ describe('core banking demo inputs', () => {
     const demo = DEMOS.find(({ id }) => id === 'core-banking');
     const dataInput = demo?.inputs.find(({ name }) => name === 'accounts.csv');
 
-    const publicCsv = await readFile(
-      new URL('../../public/demo-inputs/core-banking/accounts.csv', import.meta.url),
-      'utf8',
-    );
-    const canonicalCsv = await readFile(
-      new URL('../../../fixtures/source_data/accounts.csv', import.meta.url),
-      'utf8',
-    );
+    const publicCsv = await readFile(new URL('../../public/demo-inputs/core-banking/accounts.csv', import.meta.url), 'utf8');
+    const canonicalCsv = await readFile(new URL('../../../fixtures/source_data/accounts.csv', import.meta.url), 'utf8');
 
     expect(dataInput?.excerpt).toBe(EXPECTED_ACCOUNTS_CSV);
     expect(publicCsv.trimEnd()).toBe(EXPECTED_ACCOUNTS_CSV);
