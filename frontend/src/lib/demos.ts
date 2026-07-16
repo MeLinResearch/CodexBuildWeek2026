@@ -35,7 +35,7 @@ const DEMOS: IDemo[] = [
         kind: 'data',
         description: 'Source ledger records',
         excerpt:
-          'record_id,account_id,branch,effective_date,amount,txn_code\nTXN-000001,00012345,101,2026-07-01,1250.00,DEBIT\nTXN-000002,00067890,101,2026-07-01,1200.00,CREDIT\nTXN-000003,00022222,101,not-a-date,50.00,DEBIT',
+          'record_id,account_id,branch,effective_date,amount,txn_code\nTXN-000001,00012345,101,2026-07-01,1250.00,DEBIT\nTXN-000002,00067890,101,2026-07-01,1200.00,CREDIT\nTXN-000003,00022222,102,not-a-date,0.00,DEBIT\nTXN-000004,00033333,101,2026-07-01,50.00,CREDIT_ADJUSTMENT',
       },
       {
         name: 'target_schema.json',

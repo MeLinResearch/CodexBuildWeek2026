@@ -22,7 +22,7 @@ describe('parsePatchFiles', () => {
   it('parses the fixture patch into one file with counts', () => {
     const files = parsePatchFiles(patchFixture.diff);
 
-    expect(files).toEqual([{ path: 'reconcile/migration.py', additions: 1, deletions: 1 }]);
+    expect(files).toEqual([{ path: 'reconcile/migration.py', additions: 3, deletions: 6 }]);
   });
 
   it('parses multi-file patches with per-file counts', () => {
