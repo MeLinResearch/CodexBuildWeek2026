@@ -1,5 +1,5 @@
 {
-  "diff": "diff --git a/reconcile/migration.py b/reconcile/migration.py\n--- a/reconcile/migration.py\n+++ b/reconcile/migration.py\n@@ -1 +1 @@\n-# fixture defect behavior\n+# fixture proposal preserves IDs, branch signs, and rejects bad dates\n",
+  "diff": "diff --git a/reconcile/migration.py b/reconcile/migration.py\n--- a/reconcile/migration.py\n+++ b/reconcile/migration.py\n@@ -27,14 +27,11 @@\n \n \n def _normalize_account_id(raw: str) -> str:\n-    return str(int(raw.strip()))\n+    return raw.strip()\n \n \n def _parse_effective_date(raw: str) -> str:\n-    try:\n-        return datetime.strptime(raw.strip(), \"%Y-%m-%d\").strftime(\"%Y-%m-%d\")\n-    except ValueError:\n-        return \"1900-01-01\"\n+    return datetime.strptime(raw.strip(), \"%Y-%m-%d\").strftime(\"%Y-%m-%d\")\n \n \n def _parse_amount(raw: str) -> Decimal:\n@@ -47,7 +44,7 @@\n     if txn_code == \"CREDIT\":\n         return -amount\n     if txn_code == \"CREDIT_ADJUSTMENT\":\n-        return amount\n+        return -amount\n     raise ValueError(f\"unsupported transaction code: {txn_code}\")\n \n \n",
   "failure_ids": [
     "FAIL-001",
     "FAIL-002",
