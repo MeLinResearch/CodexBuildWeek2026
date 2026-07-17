@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+from copy import deepcopy
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -47,6 +48,40 @@ def load_schema(schema_name: str) -> JsonObject:
     if not schema_path.is_file():
         raise FileNotFoundError(schema_path)
     return _load_json_object(schema_path)
+
+
+def bundle_schema_for_model(schema_name: str) -> JsonObject:
+    """Return a detached schema with local contract references bundled in $defs."""
+    root = deepcopy(load_schema(schema_name))
+    definitions: JsonObject = deepcopy(root.get("$defs", {}))
+    loaded: dict[str, str] = {}
+
+    def bundle(value: Any) -> None:
+        if isinstance(value, dict):
+            reference = value.get("$ref")
+            if isinstance(reference, str) and reference.endswith(".schema.json") and "/" not in reference:
+                definition_name = loaded.get(reference)
+                if definition_name is None:
+                    definition_name = reference.removesuffix(".schema.json")
+                    loaded[reference] = definition_name
+                    referenced = deepcopy(load_schema(reference))
+                    referenced.pop("$schema", None)
+                    referenced.pop("$id", None)
+                    bundle(referenced)
+                    definitions[definition_name] = referenced
+                value["$ref"] = f"#/$defs/{definition_name}"
+            for child in list(value.values()):
+                bundle(child)
+        elif isinstance(value, list):
+            for child in value:
+                bundle(child)
+
+    root.pop("$schema", None)
+    root.pop("$id", None)
+    bundle(root)
+    if definitions:
+        root["$defs"] = definitions
+    return root
 
 
 def _contract_store() -> dict[str, JsonObject]:

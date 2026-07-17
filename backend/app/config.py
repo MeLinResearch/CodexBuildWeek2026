@@ -6,10 +6,29 @@ from pathlib import Path
 from typing import Callable
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+SCHEMA_VERSION = (REPO_ROOT / "contracts" / "VERSION").read_text(encoding="utf-8").strip()
 FIXTURES_DIR = REPO_ROOT / "fixtures"
 API_FIXTURES_DIR = FIXTURES_DIR / "api"
 DB_PATH = Path(os.environ.get("RELEASE_ASSURANCE_DB_PATH", REPO_ROOT / "release_assurance.sqlite"))
-GPT_MODEL_NAME = "gpt-5.6"
+
+
+def _positive_int_env(name: str, default: int) -> int:
+    raw = os.environ.get(name, str(default))
+    try:
+        value = int(raw)
+    except ValueError as error:
+        raise ValueError(f"{name} must be a positive integer") from error
+    if value <= 0:
+        raise ValueError(f"{name} must be a positive integer")
+    return value
+
+
+GPT_MODEL_NAME = os.environ.get("RELEASE_ASSURANCE_GPT_MODEL", "gpt-5.6")
+OPENAI_TIMEOUT_SECONDS = _positive_int_env("RELEASE_ASSURANCE_OPENAI_TIMEOUT_SECONDS", 120)
+CODEX_EXECUTABLE = os.environ.get("RELEASE_ASSURANCE_CODEX_EXECUTABLE", "codex")
+CODEX_TIMEOUT_SECONDS = _positive_int_env("RELEASE_ASSURANCE_CODEX_TIMEOUT_SECONDS", 180)
+CODEX_MAX_DIFF_BYTES = _positive_int_env("RELEASE_ASSURANCE_CODEX_MAX_DIFF_BYTES", 100000)
+QUARANTINE_DIR = REPO_ROOT / ".release_assurance" / "quarantine"
 CODEX_TASK_ID_FIXTURE = "fixture"
 RUN_ID_FIXTURE = "RUN-001"
 PATCH_ID_FIXTURE = "PATCH-001"
