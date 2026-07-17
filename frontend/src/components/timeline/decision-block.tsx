@@ -1,7 +1,8 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient, useSuspenseQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 
 import { api, type TPatch } from '@/api/client';
+import { runStatusQuery } from '@/api/queries';
 import { StatusChip } from '@/components/status-chip';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -20,6 +21,7 @@ interface IDecisionBlockProps {
 
 const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   const queryClient = useQueryClient();
+  const { data: runStatus } = useSuspenseQuery(runStatusQuery(runId));
   const { approval, recordApproval } = useRunUi();
   const [decision, setDecision] = useState<TDecision | null>(null);
   const [note, setNote] = useState('');
@@ -85,7 +87,9 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
         {!!approval.note && <p className="mt-2 border-l-2 border-border pl-3 text-xs text-muted-foreground italic">"{approval.note}"</p>}
         <p className="mt-2.5 text-2xs text-faint-foreground">
           {approval.status === 'approved'
-            ? 'Patch applied in the deterministic fixture sandbox. The rerun passed and the evidence pack is ready.'
+            ? runStatus.mode === 'fixture'
+              ? 'The frozen fixture patch was replayed. The deterministic rerun passed and the evidence pack is ready.'
+              : 'The approved patch passed deterministic acceptance checks in a disposable workspace. The evidence pack is ready.'
             : 'Patch rejected. No rerun was performed, and the decision remains in the audit trail.'}
         </p>
       </div>
@@ -133,7 +137,9 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
             </DialogTitle>
             <DialogDescription>
               {isApprove
-                ? 'A note is required. Approval records melinda.emerson, applies the deterministic fixture patch, reruns the tests, and produces the evidence pack.'
+                ? `A note is required. Approval records melinda.emerson, ${
+                    runStatus.mode === 'fixture' ? 'replays the frozen fixture patch' : 'applies the patch in a disposable workspace'
+                  }, reruns the deterministic checks, and produces the evidence pack.`
                 : 'A note is required. Rejection records melinda.emerson and prevents the patch from being applied or rerun.'}
             </DialogDescription>
           </DialogHeader>

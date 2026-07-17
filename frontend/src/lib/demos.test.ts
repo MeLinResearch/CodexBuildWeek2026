@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 
-import { DEMOS } from '@/lib/demos';
+import { DEMOS, demoByRunId } from '@/lib/demos';
 
 const EXPECTED_ACCOUNTS_CSV = [
   'record_id,account_id,branch,effective_date,amount,txn_code',
@@ -22,5 +22,16 @@ describe('core banking demo inputs', () => {
     expect(dataInput?.excerpt).toBe(EXPECTED_ACCOUNTS_CSV);
     expect(publicCsv.trimEnd()).toBe(EXPECTED_ACCOUNTS_CSV);
     expect(canonicalCsv.trimEnd()).toBe(EXPECTED_ACCOUNTS_CSV);
+  });
+  test('maps canonical and dynamic run IDs to the core banking demo', () => {
+    expect(demoByRunId('RUN-001')).toBe(DEMOS[0]);
+    expect(demoByRunId('RUN-002')).toEqual({ ...DEMOS[0], runId: 'RUN-002' });
+    expect(demoByRunId('RUN-999')).toEqual({ ...DEMOS[0], runId: 'RUN-999' });
+  });
+
+  test('rejects malformed and non-run IDs', () => {
+    for (const runId of ['RUN-01', 'RUN-0001', 'RUN-ABC', 'run-002', 'PATCH-001', 'not-a-run']) {
+      expect(demoByRunId(runId)).toBeUndefined();
+    }
   });
 });

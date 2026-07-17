@@ -30,6 +30,22 @@ describe('api client', () => {
     await expect(api.createFixtureRun()).resolves.toEqual({ run_id: 'RUN-001' });
   });
 
+  test('createLiveRun posts the exact canonical request', async () => {
+    globalThis.fetch = ((url: string | URL | Request, init?: RequestInit) => {
+      expect(url).toBe('/api/runs');
+      expect(init?.method).toBe('POST');
+      expect(JSON.parse(String(init?.body))).toEqual({
+        mode: 'live',
+        implementation_doc_path: 'fixtures/implementation_doc.md',
+        source_data_path: 'fixtures/source_data/accounts.csv',
+        target_schema_path: 'fixtures/schemas/target_schema.json',
+      });
+      return Promise.resolve(jsonResponse({ run_id: 'RUN-002' }));
+    }) as unknown as typeof fetch;
+
+    await expect(api.createLiveRun()).resolves.toEqual({ run_id: 'RUN-002' });
+  });
+
   test('approvePatch preserves the decision request', async () => {
     globalThis.fetch = ((url: string | URL | Request, init?: RequestInit) => {
       expect(url).toBe('/api/patches/PATCH-001/approve');
