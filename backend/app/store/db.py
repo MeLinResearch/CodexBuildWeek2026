@@ -54,7 +54,43 @@ class Store:
     ):
         self.db_path = Path(db_path) if db_path is not None else config.DB_PATH
         self.clock = clock
-        self.id_generator = id_generator or config.make_sequential_id_generator()
+        self.id_generator = id_generator
+
+    _ID_COLUMNS = {
+        "RUN": ("runs", "run_id"), "REQ": ("requirements", "requirement_id"),
+        "TEST": ("tests", "test_id"), "FAIL": ("failures", "failure_id"),
+        "PATCH": ("patches", "patch_id"), "ART": ("artifacts", "artifact_id"),
+    }
+
+    def allocate_id(self, prefix: str, *, start: int = 1) -> str:
+        return self.allocate_ids(prefix, 1, start=start)[0]
+
+    def allocate_ids(self, prefix: str, count: int, *, start: int = 1) -> tuple[str, ...]:
+        if prefix not in self._ID_COLUMNS:
+            raise ValueError(f"unsupported ID prefix: {prefix}")
+        if count <= 0 or start <= 0:
+            raise ValueError("count and start must be positive")
+        if self.id_generator is not None:
+            values = tuple(self.id_generator(prefix) for _ in range(count))
+            if any(int(value.rsplit("-", 1)[-1]) > 999 for value in values):
+                raise OverflowError("ID space exhausted")
+            return values
+        table, column = self._ID_COLUMNS[prefix]
+        with self.connect() as conn:
+            rows = conn.execute(f"SELECT {column} FROM {table}").fetchall()
+        used = {int(row[0][len(prefix) + 1:]) for row in rows
+                if row[0].startswith(prefix + "-") and row[0][len(prefix) + 1:].isdigit()}
+        result: list[str] = []
+        candidate = start
+        while len(result) < count:
+            while candidate in used:
+                candidate += 1
+            if candidate > 999:
+                raise OverflowError("ID space exhausted")
+            result.append(f"{prefix}-{candidate:03d}")
+            used.add(candidate)
+            candidate += 1
+        return tuple(result)
 
     def connect(self) -> sqlite3.Connection:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -87,7 +123,7 @@ class Store:
     ) -> RunRow:
         at = self.clock()
         row = RunRow(
-            run_id=run_id or self.id_generator("RUN"),
+            run_id=run_id or self.allocate_id("RUN"),
             state=state,
             mode=mode,
             schema_version=schema_version,
@@ -180,6 +216,17 @@ class Store:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM tests WHERE run_id = ? ORDER BY test_id", (run_id,)).fetchall()
         return [self._test(row) for row in rows]
+
+    def set_test_result(self, test_id: str, status: str, output_ref: str | None) -> TestRow:
+        if status not in {"passed", "failed", "skipped"}:
+            raise ValueError("test status must be passed, failed, or skipped")
+        with self.connect() as conn:
+            conn.execute("UPDATE tests SET status = ?, output_ref = ? WHERE test_id = ?",
+                         (status, output_ref, test_id))
+            row = conn.execute("SELECT * FROM tests WHERE test_id = ?", (test_id,)).fetchone()
+        if row is None:
+            raise LookupError(f"Test not found: {test_id}")
+        return self._test(row)
 
     def insert_failure(self, row: FailureRow) -> FailureRow:
         with self.connect() as conn:
