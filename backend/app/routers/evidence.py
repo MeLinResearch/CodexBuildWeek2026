@@ -1,6 +1,5 @@
 from fastapi import APIRouter, HTTPException, Response
 
-from app.config import PATCH_ID_FIXTURE
 from app.evidence import render_evidence_html
 from app.routers.runs import build_matrix, require_run
 from app.store.db import Store
@@ -18,9 +17,10 @@ def evidence(run_id: str):
         raise HTTPException(status_code=404, detail="requirements not found")
     tests = store.list_tests(run_id)
     failures = store.list_failures(run_id)
-    patch = store.get_patch(PATCH_ID_FIXTURE)
-    if patch is None:
+    patches = store.list_patches(run_id)
+    if len(patches) != 1:
         raise HTTPException(status_code=404, detail="patch not found")
+    patch = patches[0]
     transitions = store.list_state_transitions(run_id)
     matrix = build_matrix(store, run_id)
     html = render_evidence_html(
