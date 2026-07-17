@@ -38,6 +38,8 @@ def validate_proposed_diff(diff: str, allowed_paths: tuple[str, ...], max_bytes:
     header_indexes = [index for index, line in enumerate(lines) if line.startswith("diff --git ")]
     if not header_indexes:
         raise UnsafePatchError("diff must contain at least one file")
+    if header_indexes[0] != 0:
+        raise UnsafePatchError("diff must begin with a file header")
     paths: list[str] = []
     for position, header_index in enumerate(header_indexes):
         header = lines[header_index]
