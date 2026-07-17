@@ -6,7 +6,7 @@ import json
 import pytest
 
 from app.config import FIXTURES_DIR
-from app.llm.validate import LLMValidationError, load_schema, validate_control_manifest, validate_output
+from app.llm.validate import LLMValidationError, bundle_schema_for_model, load_schema, validate_control_manifest, validate_output
 
 
 def _control_manifest_fixture():
@@ -62,3 +62,16 @@ def test_validate_control_manifest_wrapper_passes():
     payload = _control_manifest_fixture()
 
     assert validate_control_manifest(payload) is payload
+
+
+def test_bundle_schema_is_fresh_internal_and_does_not_affect_contract():
+    original = load_schema("control_manifest.schema.json")
+    first = bundle_schema_for_model("control_manifest.schema.json")
+    second = bundle_schema_for_model("control_manifest.schema.json")
+
+    assert first == second and first is not second
+    assert "provenance" in first["$defs"]
+    assert ".schema.json" not in json.dumps(first)
+    assert "$schema" not in first and "$id" not in first
+    assert load_schema("control_manifest.schema.json") == original
+    assert validate_output("control_manifest.schema.json", _control_manifest_fixture())

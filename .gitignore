@@ -10,3 +10,4 @@ dist/
 *.py[cod]
 *$py.class
 *.egg-info/
+.release_assurance/
