@@ -35,11 +35,12 @@ def validate_proposed_diff(diff: str, allowed_paths: tuple[str, ...], max_bytes:
     lines = diff.splitlines()
     if any(line.startswith(forbidden) for line in lines):
         raise UnsafePatchError("unsupported patch operation")
-    headers = [line for line in lines if line.startswith("diff --git ")]
-    if not headers:
+    header_indexes = [index for index, line in enumerate(lines) if line.startswith("diff --git ")]
+    if not header_indexes:
         raise UnsafePatchError("diff must contain at least one file")
     paths: list[str] = []
-    for header in headers:
+    for position, header_index in enumerate(header_indexes):
+        header = lines[header_index]
         match = re.fullmatch(r"diff --git a/(\S+) b/(\S+)", header)
         if match is None:
             raise UnsafePatchError("invalid diff header")
@@ -48,11 +49,15 @@ def validate_proposed_diff(diff: str, allowed_paths: tuple[str, ...], max_bytes:
             raise UnsafePatchError("old and new paths must match")
         if old_path not in allowed_paths:
             raise UnsafePatchError("patch path is outside the allowlist")
+        section_end = header_indexes[position + 1] if position + 1 < len(header_indexes) else len(lines)
+        section = lines[header_index + 1:section_end]
+        old_markers = [line[4:] for line in section if line.startswith("--- ")]
+        new_markers = [line[4:] for line in section if line.startswith("+++ ")]
+        if old_markers != [f"a/{old_path}"] or new_markers != [f"b/{new_path}"]:
+            raise UnsafePatchError("diff file markers do not match header")
         if old_path not in paths:
             paths.append(old_path)
     for line in lines:
-        if line.startswith("--- ") and line[4:] == "/dev/null" or line.startswith("+++ ") and line[4:] == "/dev/null":
-            raise UnsafePatchError("new and deleted files are forbidden")
         if re.fullmatch(r"(?:old|new) mode 120000", line):
             raise UnsafePatchError("symlink patches are forbidden")
     return tuple(paths)

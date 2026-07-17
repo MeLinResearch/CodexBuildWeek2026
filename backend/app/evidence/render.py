@@ -86,6 +86,11 @@ def render_evidence_html(
     )
     requirement_text = "".join(f"<li>{_text(requirement.requirement_id)}: {_text(requirement.text)}</li>" for requirement in requirements)
     summary_fields = "".join(_field(key, value) for key, value in summary.items())
+    evidence_notice = (
+        "Fixture evidence, no live model calls"
+        if run.mode == "fixture"
+        else "Live evidence generated from validated GPT and Codex outputs"
+    )
     return f'''<!doctype html>
 <html>
 <head>
@@ -106,7 +111,7 @@ footer {{ margin-top: 32px; font-size: 12px; color: #475569; }}
 </head>
 <body>
 <h1>Release Assurance Evidence Pack</h1>
-<p>Fixture evidence, no live model calls</p>
+<p>{evidence_notice}</p>
 <dl>{_field('run_id', run.run_id)}{_field('mode', run.mode)}{_field('state', run.state)}{_field('created_at', run.created_at)}{_field('updated_at', run.updated_at)}{_field('schema_version', run.schema_version)}</dl>
 <h2>Run provenance</h2>
 <dl>{_field('producer', provenance.get('producer'))}{_field('client', provenance.get('client'))}{_field('mode', provenance.get('mode'))}{_field('validation_status', provenance.get('validation_status'))}{_field('schema_version', provenance.get('schema_version'))}{_field('source_artifact_ids', provenance.get('source_artifact_ids'))}{_field('created_at', provenance.get('created_at'))}</dl>

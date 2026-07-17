@@ -13,7 +13,7 @@ from app.store.state_machine import InvalidTransitionError, RunNotFoundError, tr
 
 router = APIRouter(prefix="/api")
 
-RUN_PROVENANCE_FALLBACK = {
+FIXTURE_PROVENANCE_FALLBACK = {
     "client": "FixtureLLMClient",
     "created_at": config.FIXTURE_CLOCK_AT,
     "mode": "fixture",
@@ -23,6 +23,23 @@ RUN_PROVENANCE_FALLBACK = {
     "source_artifact_ids": ["ART-001"],
     "validation_status": "validated",
 }
+
+
+def _fallback_provenance(run, store: Store) -> dict:
+    if run.mode == "fixture":
+        return {**FIXTURE_PROVENANCE_FALLBACK, "run_id": run.run_id,
+                "schema_version": run.schema_version, "created_at": run.created_at}
+    return {
+        "client": "LiveLLMClient",
+        "created_at": run.created_at,
+        "mode": "live",
+        "producer": "gpt-5.6",
+        "run_id": run.run_id,
+        "schema_version": run.schema_version,
+        "source_artifact_ids": [artifact.artifact_id for artifact in store.list_artifacts(run.run_id)
+                                if artifact.kind == "input"],
+        "validation_status": "rejected" if run.state == "FAILED" else "quarantined",
+    }
 
 
 class RunRequest(BaseModel):
@@ -119,8 +136,9 @@ def create_run(request: RunRequest):
 @router.get("/runs/{run_id}")
 def get_run(run_id: str):
     run = require_run(run_id)
-    requirements = _store().list_requirements(run_id)
-    provenance = requirements[0].provenance if requirements else RUN_PROVENANCE_FALLBACK
+    store = _store()
+    requirements = store.list_requirements(run_id)
+    provenance = requirements[0].provenance if requirements else _fallback_provenance(run, store)
     return {
         "run_id": run.run_id,
         "state": run.state,
@@ -169,7 +187,8 @@ def rerun(run_id: str):
     run = require_run(run_id)
     if run.state != "PATCH_APPROVED":
         raise HTTPException(status_code=409, detail="run is not approved for rerun")
-    store = _store()
+    store = Store(clock=config.fixture_clock if run.mode == "fixture" else config.default_clock)
+    store.init_schema()
     patches = store.list_patches(run_id)
     if len(patches) != 1: raise HTTPException(status_code=404, detail="patch not found")
     patch = patches[0]

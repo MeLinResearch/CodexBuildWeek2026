@@ -81,7 +81,29 @@ def bundle_schema_for_model(schema_name: str) -> JsonObject:
     bundle(root)
     if definitions:
         root["$defs"] = definitions
+    _make_strict(root)
     return root
+
+
+def _make_strict(value: Any) -> None:
+    """Adapt the detached model schema to the strict Structured Outputs subset."""
+    if isinstance(value, dict):
+        properties = value.get("properties")
+        if isinstance(properties, dict):
+            required = set(value.get("required", []))
+            for name, child in properties.items():
+                if name not in required and isinstance(child, dict):
+                    child_type = child.get("type")
+                    if isinstance(child_type, str):
+                        child["type"] = [child_type, "null"]
+                    elif isinstance(child_type, list) and "null" not in child_type:
+                        child["type"] = [*child_type, "null"]
+            value["required"] = list(properties)
+        for child in value.values():
+            _make_strict(child)
+    elif isinstance(value, list):
+        for child in value:
+            _make_strict(child)
 
 
 def _contract_store() -> dict[str, JsonObject]:

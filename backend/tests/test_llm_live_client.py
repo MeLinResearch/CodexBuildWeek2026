@@ -33,6 +33,9 @@ def test_valid_call_arguments_and_metadata(tmp_path, monkeypatch):
     assert responses.kwargs["tools"] == [] and responses.kwargs["store"] is False
     assert responses.kwargs["text"]["format"]["strict"] is True
     assert "$defs" in responses.kwargs["text"]["format"]["schema"]
+    requirement_schema = responses.kwargs["text"]["format"]["schema"]["properties"]["requirements"]["items"]
+    assert set(requirement_schema["required"]) == set(requirement_schema["properties"])
+    assert requirement_schema["properties"]["tolerance"]["type"] == ["string", "null"]
     context = json.loads(responses.kwargs["input"])
     assert context["implementation_doc"] == "doc" and context["provenance"]["client"] == "LiveLLMClient"
 
@@ -57,3 +60,10 @@ def test_key_required_only_without_injection(monkeypatch):
     monkeypatch.delenv("OPENAI_API_KEY", raising=False)
     LiveLLMClient(SimpleNamespace(responses=Responses("{}")))
     with pytest.raises(LiveLLMConfigurationError): LiveLLMClient()
+
+
+def test_invalid_run_id_is_rejected_before_model_call(tmp_path):
+    live, responses = client(tmp_path, json.dumps(manifest()))
+    with pytest.raises(ValueError, match="invalid run_id"):
+        live.extract_requirements(implementation_doc="doc", run_id="../../outside", source_artifact_ids=[])
+    assert responses.kwargs is None

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 from pathlib import Path
 from typing import Any, Callable
 
@@ -37,6 +38,8 @@ class LiveLLMClient:
 
     def extract_requirements(self, *, implementation_doc: str, run_id: str,
                              source_artifact_ids: list[str]) -> JsonObject:
+        if re.fullmatch(r"RUN-[0-9]{3}", run_id) is None:
+            raise ValueError("invalid run_id")
         created_at = self.clock()
         provenance = {"producer": "gpt-5.6", "mode": "live", "client": "LiveLLMClient",
                       "validation_status": "validated"}
@@ -64,6 +67,9 @@ class LiveLLMClient:
             raise LiveLLMResponseError("Live LLM response was not valid JSON") from error
         if not isinstance(payload, dict):
             raise LiveLLMResponseError("Live LLM response must be a JSON object")
+        for requirement in payload.get("requirements", []):
+            if isinstance(requirement, dict) and requirement.get("tolerance") is None:
+                requirement.pop("tolerance", None)
         try:
             validate_output("control_manifest.schema.json", payload)
             expected = {"run_id": run_id, "schema_version": config.SCHEMA_VERSION,
