@@ -306,6 +306,22 @@ class Store:
             raise LookupError(f"Patch not found: {patch_id}")
         return self._patch(row)
 
+    def set_patch_application(
+        self, patch_id: str, status: Literal["applied", "apply_failed"], provenance: dict[str, Any]
+    ) -> PatchRow:
+        if status not in {"applied", "apply_failed"}:
+            raise ValueError("patch application status must be applied or apply_failed")
+        at = self.clock() if status == "applied" else None
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE patches SET status = ?, applied_at = ?, provenance = ? WHERE patch_id = ?",
+                (status, at, _json_dumps(_validate_provenance(provenance)), patch_id),
+            )
+            row = conn.execute("SELECT * FROM patches WHERE patch_id = ?", (patch_id,)).fetchone()
+        if row is None:
+            raise LookupError(f"Patch not found: {patch_id}")
+        return self._patch(row)
+
     def insert_artifact(self, row: ArtifactRow) -> ArtifactRow:
         with self.connect() as conn:
             conn.execute(
