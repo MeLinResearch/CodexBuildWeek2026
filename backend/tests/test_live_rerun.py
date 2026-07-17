@@ -61,11 +61,16 @@ def test_live_rerun_applies_only_in_disposable_workspace(monkeypatch, tmp_path: 
     assert report["pre_apply_tree"] != report["post_apply_tree"]
     assert report["checks"] == {"account_identifiers": "passed", "invalid_dates": "passed",
                                  "branch_balance": "passed"}
-    assert Store(db_path).get_run("RUN-002").state == "EVIDENCE_READY"
+    store = Store(db_path)
+    artifact = store.get_artifact(report["artifact_id"])
+    assert artifact is not None and artifact.mode == "live"
+    assert store.get_run("RUN-002").state == "EVIDENCE_READY"
 
 
 def test_live_rerun_failure_is_mechanical_and_persisted(monkeypatch, tmp_path: Path):
     db_path, _ = _prepare(monkeypatch, tmp_path, incomplete=True)
+    target = config.REPO_ROOT / "reconcile/migration.py"
+    before = hashlib.sha256(target.read_bytes()).hexdigest()
 
     response = client.post("/api/runs/RUN-002/rerun")
 
@@ -73,3 +78,4 @@ def test_live_rerun_failure_is_mechanical_and_persisted(monkeypatch, tmp_path: P
     store = Store(db_path)
     assert store.get_patch("PATCH-002").status == "apply_failed"
     assert store.get_run("RUN-002").state == "FAILED"
+    assert hashlib.sha256(target.read_bytes()).hexdigest() == before
