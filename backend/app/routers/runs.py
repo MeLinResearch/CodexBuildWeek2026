@@ -6,7 +6,7 @@ from app.config import RUN_ID_FIXTURE
 from app.codex.live_client import LiveCodexClient
 from app.llm.live_client import LiveLLMClient, LiveLLMConfigurationError
 from app.pipeline.live_pipeline import LiveInputError, LivePipelineError, LiveRunInputs, run_live_pipeline
-from app.pipeline.live_rerun import LiveRerunError, apply_and_verify_live_patch
+from app.pipeline.live_rerun import LiveRerunError, apply_and_verify_patch
 from pathlib import Path
 from app.pipeline.mock_pipeline import run_fixture_pipeline
 from app.store.db import Store
@@ -67,12 +67,13 @@ def require_run(run_id: str):
     return run
 
 
-def _matrix_row_status(patch_status: str) -> str:
+def _matrix_row_status(patch_status: str, test_status: str) -> str:
+    if patch_status == "applied":
+        return "rerun_passed" if test_status == "passed" else "failed"
     status_by_patch_status = {
         "pending": "patch_pending",
         "approved": "patch_approved",
         "rejected": "failed",
-        "applied": "rerun_passed",
         "apply_failed": "failed",
     }
     return status_by_patch_status.get(patch_status, "failed")
@@ -99,7 +100,7 @@ def build_matrix(store: Store, run_id: str) -> list[dict]:
                 "test_id": test.test_id,
                 "failure_ids": failure_ids,
                 "patch_id": patch.patch_id,
-                "row_status": _matrix_row_status(patch.status),
+                "row_status": _matrix_row_status(patch.status, test.status),
                 "evidence_refs": [test.output_ref] if test.output_ref is not None else [],
                 "provenance": test.provenance,
             }
@@ -194,11 +195,8 @@ def rerun(run_id: str):
     if len(patches) != 1: raise HTTPException(status_code=404, detail="patch not found")
     patch = patches[0]
     try:
-        if run.mode == "live":
-            apply_and_verify_live_patch(store, patch)
+        apply_and_verify_patch(store, patch)
         transition_run(store, run_id, "RERUNNING", actor="api")
-        if run.mode == "fixture":
-            store.mark_patch_applied(patch.patch_id)
         transition_run(store, run_id, "EVIDENCE_READY", actor="api")
     except LiveRerunError as exc:
         store.set_patch_application(patch.patch_id, "apply_failed", patch.provenance)

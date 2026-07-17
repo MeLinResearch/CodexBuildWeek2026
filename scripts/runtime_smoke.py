@@ -62,7 +62,15 @@ def main() -> None:
             assert rerun["state"] == "EVIDENCE_READY"
             assert rerun["mode"] == "fixture"
             assert request("GET", "/api/runs/RUN-001")["state"] == "EVIDENCE_READY"
-            assert all(row["row_status"] == "rerun_passed" for row in request("GET", "/api/runs/RUN-001/matrix"))
+            matrix = request("GET", "/api/runs/RUN-001/matrix")
+            assert all(row["row_status"] == "rerun_passed" for row in matrix)
+            rerun_artifact_ids = {row["evidence_refs"][0] for row in matrix}
+            assert len(rerun_artifact_ids) == 1
+            assert rerun_artifact_ids.isdisjoint({"ART-006", "ART-007", "ART-008"})
+            report_path = Path(__file__).resolve().parents[1] / ".release_assurance/runs/RUN-001/rerun_result.json"
+            report = json.loads(report_path.read_text())
+            assert report["artifact_id"] in rerun_artifact_ids
+            assert set(report["checks"].values()) == {"passed"}
             html = request("GET", "/api/runs/RUN-001/evidence")
             for expected in [
                 "Release Assurance Evidence Pack",

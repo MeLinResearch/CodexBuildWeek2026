@@ -168,9 +168,13 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
 
   const requirementIds = useMemo(() => matrix.map((row) => row.requirement_id), [matrix]);
   const testRows = useMemo(() => {
-    return matrix.map((row) => ({ testId: row.test_id, requirementId: row.requirement_id, failed: row.failure_ids.length > 0 }));
+    return matrix.map((row) => ({
+      testId: row.test_id,
+      requirementId: row.requirement_id,
+      failed: row.row_status !== 'passed' && row.row_status !== 'rerun_passed',
+    }));
   }, [matrix]);
-  const failureIds = useMemo(() => matrix.flatMap((row) => row.failure_ids), [matrix]);
+  const failedTestCount = useMemo(() => testRows.filter((row) => row.failed).length, [testRows]);
   const fixPaths = useMemo(() => (patch ? mapFailuresToFiles(patch.failure_ids, parsePatchFiles(patch.diff)) : {}), [patch]);
   const dataFile = demo.inputs.find((input) => input.kind === 'data')?.name;
 
@@ -224,7 +228,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
           <>
             {testRows.length} tests
             <Dot />
-            {failureIds.length} failed
+            {failedTestCount} failed
           </>
         }
         status={statusFor(2)}

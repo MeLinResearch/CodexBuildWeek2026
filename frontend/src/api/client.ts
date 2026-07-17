@@ -6,7 +6,11 @@ import type traceabilityMatrixFixture from '@/mocks/traceability_matrix.fixture.
 type TFailure = typeof failureFixture;
 type TPatch = typeof patchFixture;
 type TRunStatus = Omit<typeof runStatusFixture, 'mode'> & { mode: 'fixture' | 'live' };
-type TTraceabilityMatrix = typeof traceabilityMatrixFixture;
+type TTraceabilityRowStatus = 'pending' | 'passed' | 'failed' | 'patch_pending' | 'patch_approved' | 'rerun_passed';
+type TTraceabilityMatrixRow = Omit<(typeof traceabilityMatrixFixture)[number], 'row_status'> & {
+  row_status: TTraceabilityRowStatus;
+};
+type TTraceabilityMatrix = TTraceabilityMatrixRow[];
 
 interface ICreateRunResult {
   run_id: string;
