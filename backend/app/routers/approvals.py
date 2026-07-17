@@ -2,7 +2,6 @@ from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app import config
-from app.config import PATCH_ID_FIXTURE
 from app.store.db import Store
 from app.store.state_machine import InvalidTransitionError, RunNotFoundError, transition_run
 
@@ -21,8 +20,6 @@ def _store() -> Store:
 
 
 def _require_patch(store: Store, patch_id: str):
-    if patch_id != PATCH_ID_FIXTURE:
-        raise HTTPException(status_code=404, detail="patch not found")
     patch = store.get_patch(patch_id)
     if patch is None:
         raise HTTPException(status_code=404, detail="patch not found")
@@ -46,6 +43,7 @@ def _decide_patch(patch_id: str, request: ApprovalRequest, status: str, to_state
     run = store.get_run(patch.run_id)
     if run is None:
         raise HTTPException(status_code=404, detail="run not found")
+    store.clock = config.default_clock if run.mode == "live" else config.fixture_clock
     if run.state != "PATCH_PENDING":
         raise HTTPException(status_code=409, detail="run is not awaiting patch decision")
     if patch.status != "pending":

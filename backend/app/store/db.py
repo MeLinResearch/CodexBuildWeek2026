@@ -20,6 +20,15 @@ from app.store.models import (
 
 _SCHEMA_PATH = Path(__file__).with_name("schema.sql")
 
+_ALLOCATABLE_TABLES: dict[str, tuple[str, str]] = {
+    "RUN": ("runs", "run_id"),
+    "REQ": ("requirements", "requirement_id"),
+    "TEST": ("tests", "test_id"),
+    "FAIL": ("failures", "failure_id"),
+    "PATCH": ("patches", "patch_id"),
+    "ART": ("artifacts", "artifact_id"),
+}
+
 
 def _json_dumps(value: Any) -> str:
     return json.dumps(value, sort_keys=True)
@@ -54,7 +63,7 @@ class Store:
     ):
         self.db_path = Path(db_path) if db_path is not None else config.DB_PATH
         self.clock = clock
-        self.id_generator = id_generator or config.make_sequential_id_generator()
+        self.id_generator = id_generator
 
     def connect(self) -> sqlite3.Connection:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
@@ -86,8 +95,10 @@ class Store:
         run_id: str | None = None,
     ) -> RunRow:
         at = self.clock()
+        if run_id is None:
+            run_id = self.id_generator("RUN") if self.id_generator is not None else self.allocate_id("RUN")
         row = RunRow(
-            run_id=run_id or self.id_generator("RUN"),
+            run_id=run_id,
             state=state,
             mode=mode,
             schema_version=schema_version,
@@ -95,6 +106,33 @@ class Store:
             updated_at=at,
         )
         return self.insert_run(row)
+
+    def allocate_id(self, prefix: str, *, start: int = 1) -> str:
+        return self.allocate_ids(prefix, 1, start=start)[0]
+
+    def allocate_ids(self, prefix: str, count: int, *, start: int = 1) -> tuple[str, ...]:
+        if prefix not in _ALLOCATABLE_TABLES:
+            raise ValueError(f"unsupported id prefix: {prefix}")
+        if count <= 0:
+            raise ValueError("count must be positive")
+        table, column = _ALLOCATABLE_TABLES[prefix]
+        with self.connect() as conn:
+            rows = conn.execute(f"SELECT {column} FROM {table}").fetchall()
+        used: set[int] = set()
+        for row in rows:
+            value = row[0]
+            suffix = value[len(prefix) + 1 :] if value.startswith(f"{prefix}-") else None
+            if suffix is not None and suffix.isdigit():
+                used.add(int(suffix))
+        allocated: list[int] = []
+        current = start
+        while len(allocated) < count:
+            if current > 999:
+                raise ValueError(f"no available three-digit id for prefix {prefix}")
+            if current not in used:
+                allocated.append(current)
+            current += 1
+        return tuple(f"{prefix}-{value:03d}" for value in allocated)
 
     def get_run(self, run_id: str) -> RunRow | None:
         with self.connect() as conn:
@@ -180,6 +218,21 @@ class Store:
         with self.connect() as conn:
             rows = conn.execute("SELECT * FROM tests WHERE run_id = ? ORDER BY test_id", (run_id,)).fetchall()
         return [self._test(row) for row in rows]
+
+    def set_test_result(
+        self, test_id: str, status: Literal["passed", "failed", "skipped"], output_ref: str | None
+    ) -> TestRow:
+        if status not in {"passed", "failed", "skipped"}:
+            raise ValueError("test status must be passed, failed, or skipped")
+        with self.connect() as conn:
+            conn.execute(
+                "UPDATE tests SET status = ?, output_ref = ? WHERE test_id = ?",
+                (status, output_ref, test_id),
+            )
+            row = conn.execute("SELECT * FROM tests WHERE test_id = ?", (test_id,)).fetchone()
+        if row is None:
+            raise LookupError(f"Test not found: {test_id}")
+        return self._test(row)
 
     def insert_failure(self, row: FailureRow) -> FailureRow:
         with self.connect() as conn:

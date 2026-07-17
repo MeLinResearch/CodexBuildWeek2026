@@ -1,8 +1,19 @@
+from pathlib import Path
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
 from app import config
-from app.config import PATCH_ID_FIXTURE, RUN_ID_FIXTURE
+from app.codex.live_client import LiveCodexClient
+from app.config import RUN_ID_FIXTURE
+from app.llm.live_client import LiveLLMClient, LiveLLMConfigurationError
+from app.pipeline.live_pipeline import (
+    LiveInputError,
+    LivePipelineError,
+    LiveRunInputs,
+    run_live_pipeline,
+    validate_live_run_inputs,
+)
 from app.pipeline.mock_pipeline import run_fixture_pipeline
 from app.store.db import Store
 from app.store.state_machine import InvalidTransitionError, RunNotFoundError, transition_run
@@ -29,17 +40,19 @@ class RunRequest(BaseModel):
     target_schema_path: str | None = None
 
 
-def _store() -> Store:
-    return Store(clock=config.fixture_clock)
+def _store(*, live: bool = False) -> Store:
+    return Store(clock=config.default_clock if live else config.fixture_clock)
 
 
-def _require_fixture_run_id(run_id: str) -> None:
-    if run_id != RUN_ID_FIXTURE:
-        raise HTTPException(status_code=404, detail="run not found")
+def _make_live_llm_client() -> LiveLLMClient:
+    return LiveLLMClient()
+
+
+def _make_live_codex_client() -> LiveCodexClient:
+    return LiveCodexClient()
 
 
 def require_run(run_id: str):
-    _require_fixture_run_id(run_id)
     store = _store()
     store.init_schema()
     run = store.get_run(run_id)
@@ -62,23 +75,25 @@ def _matrix_row_status(patch_status: str) -> str:
 def build_matrix(store: Store, run_id: str) -> list[dict]:
     tests = store.list_tests(run_id)
     failures = store.list_failures(run_id)
-    patch = store.get_patch(PATCH_ID_FIXTURE)
-    if patch is None:
-        raise HTTPException(status_code=404, detail="patch not found")
+    patches = store.list_patches(run_id)
 
     rows = []
     for test in tests:
         failure_ids = sorted(
             failure.failure_id for failure in failures if failure.test_id == test.test_id
         )
-        if not any(failure_id in patch.failure_ids for failure_id in failure_ids):
+        patch = next(
+            (candidate for candidate in patches if any(fid in candidate.failure_ids for fid in failure_ids)),
+            None,
+        )
+        if patch is None:
             raise HTTPException(status_code=404, detail="patch not found")
         rows.append(
             {
                 "requirement_id": test.requirement_id,
                 "test_id": test.test_id,
                 "failure_ids": failure_ids,
-                "patch_id": PATCH_ID_FIXTURE,
+                "patch_id": patch.patch_id,
                 "row_status": _matrix_row_status(patch.status),
                 "evidence_refs": [test.output_ref] if test.output_ref is not None else [],
                 "provenance": test.provenance,
@@ -100,13 +115,51 @@ def _patch_payload(patch):
 
 @router.post("/runs")
 def create_run(request: RunRequest):
-    if request.mode != "fixture":
-        raise HTTPException(status_code=400, detail="live mode is not implemented in scaffold")
-    store = _store()
+    if request.mode == "fixture":
+        store = _store()
+        store.init_schema()
+        store.delete_run(RUN_ID_FIXTURE)
+        run_fixture_pipeline(store, run_id=RUN_ID_FIXTURE, actor="api")
+        return {"run_id": RUN_ID_FIXTURE}
+
+    if request.mode != "live":
+        raise HTTPException(status_code=400, detail="mode must be fixture or live")
+
+    if request.fixture_set is not None:
+        raise HTTPException(status_code=400, detail="fixture_set is not allowed in live mode")
+    if not request.implementation_doc_path or not request.source_data_path or not request.target_schema_path:
+        raise HTTPException(
+            status_code=400,
+            detail="implementation_doc_path, source_data_path, and target_schema_path are required in live mode",
+        )
+
+    inputs = LiveRunInputs(
+        implementation_doc_path=Path(request.implementation_doc_path),
+        source_data_path=Path(request.source_data_path),
+        target_schema_path=Path(request.target_schema_path),
+    )
+    try:
+        validated = validate_live_run_inputs(inputs)
+    except LiveInputError as error:
+        raise HTTPException(status_code=400, detail=str(error)) from error
+
+    try:
+        llm_client = _make_live_llm_client()
+        codex_client = _make_live_codex_client()
+    except LiveLLMConfigurationError as error:
+        raise HTTPException(status_code=503, detail=str(error)) from error
+
+    store = _store(live=True)
     store.init_schema()
-    store.delete_run(RUN_ID_FIXTURE)
-    run_fixture_pipeline(store, run_id=RUN_ID_FIXTURE, actor="api")
-    return {"run_id": RUN_ID_FIXTURE}
+    try:
+        run = run_live_pipeline(
+            store, validated=validated, llm_client=llm_client, codex_client=codex_client, actor="api"
+        )
+    except LivePipelineError as error:
+        raise HTTPException(status_code=502, detail={"run_id": error.run_id, "stage": error.stage}) from error
+    except Exception as error:
+        raise HTTPException(status_code=500, detail="live run failed") from error
+    return {"run_id": run.run_id}
 
 
 @router.get("/runs/{run_id}")
@@ -162,10 +215,15 @@ def rerun(run_id: str):
     run = require_run(run_id)
     if run.state != "PATCH_APPROVED":
         raise HTTPException(status_code=409, detail="run is not approved for rerun")
-    store = _store()
+    store = _store(live=(run.mode == "live"))
+    patch = next((candidate for candidate in store.list_patches(run_id) if candidate.status == "approved"), None)
+    if patch is None:
+        raise HTTPException(status_code=404, detail="patch not found")
+    if run.mode == "live":
+        raise HTTPException(status_code=501, detail="live patch application is not implemented until PR 29")
     try:
         transition_run(store, run_id, "RERUNNING", actor="api")
-        store.mark_patch_applied(PATCH_ID_FIXTURE)
+        store.mark_patch_applied(patch.patch_id)
         transition_run(store, run_id, "EVIDENCE_READY", actor="api")
     except InvalidTransitionError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
