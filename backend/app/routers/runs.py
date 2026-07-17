@@ -6,6 +6,7 @@ from app.config import RUN_ID_FIXTURE
 from app.codex.live_client import LiveCodexClient
 from app.llm.live_client import LiveLLMClient, LiveLLMConfigurationError
 from app.pipeline.live_pipeline import LiveInputError, LivePipelineError, LiveRunInputs, run_live_pipeline
+from app.pipeline.live_rerun import LiveRerunError, apply_and_verify_live_patch
 from pathlib import Path
 from app.pipeline.mock_pipeline import run_fixture_pipeline
 from app.store.db import Store
@@ -192,12 +193,17 @@ def rerun(run_id: str):
     patches = store.list_patches(run_id)
     if len(patches) != 1: raise HTTPException(status_code=404, detail="patch not found")
     patch = patches[0]
-    if run.mode == "live":
-        raise HTTPException(status_code=501, detail="live patch application is not implemented until PR 29")
     try:
+        if run.mode == "live":
+            apply_and_verify_live_patch(store, patch)
         transition_run(store, run_id, "RERUNNING", actor="api")
-        store.mark_patch_applied(patch.patch_id)
+        if run.mode == "fixture":
+            store.mark_patch_applied(patch.patch_id)
         transition_run(store, run_id, "EVIDENCE_READY", actor="api")
+    except LiveRerunError as exc:
+        store.set_patch_application(patch.patch_id, "apply_failed", patch.provenance)
+        transition_run(store, run_id, "FAILED", actor="api")
+        raise HTTPException(status_code=422, detail="approved patch failed disposable verification") from exc
     except InvalidTransitionError as exc:
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     except (RunNotFoundError, LookupError) as exc:
@@ -206,5 +212,5 @@ def rerun(run_id: str):
         "run_id": run_id,
         "status": "rerun complete",
         "state": "EVIDENCE_READY",
-        "mode": "fixture",
+        "mode": run.mode,
     }
