@@ -1,14 +1,20 @@
 # Live Codex spike
 
-**Status: IMPLEMENTED_PENDING_LOCAL_VERIFICATION**
+## Current status
+
+**Status: LIVE_WIRING_ENABLED_OPERATIONAL_GATE_UNSATISFIED**
+
+The automated `LiveCodexClient` implementation and fake-runner tests exist, and live wiring is enabled. The original operational spike gate remains unsatisfied until supervised local execution is recorded. Fake-runner coverage does not satisfy that gate, and none of the eight blocked checks below is claimed as passed.
 
 Human review approved implementation of the narrow read-only boundary on 2026-07-16. Unit tests exercise the subprocess contract with fakes; they do not prove that a locally installed Codex executable enforces its sandbox. No paid Codex call was made.
 
-Do not implement LiveCodexClient until this spike is reviewed. This review occurred on 2026-07-16 before implementation.
+## Historical directives superseded by later implementation
+
+“Do not implement LiveCodexClient until this spike is reviewed” and “disable live use until its exact command is verified locally” were historical pre-implementation decisions. The review occurred on 2026-07-16, automated implementation followed, and later live wiring superseded those directives. The operational verification gate itself remains unsatisfied.
 
 ## Decision
 
-Keep the isolated read-only boundary, but disable live use until its exact command is verified locally.
+Keep the isolated read-only boundary. Live wiring is enabled, but it must not be represented as operationally verified until supervised local execution is recorded.
 
 ## Fallback if blocked
 
@@ -84,7 +90,7 @@ Workspace-write remains unimplemented.
 
 ## Review notes
 
-The demo remains on fixture mode until the live boundary is verified.
+The deterministic fixture demo remains the supported verified path. Live wiring is enabled despite the unsatisfied operational gate.
 
 ## Implemented read-only command contract
 
@@ -109,4 +115,4 @@ The demo remains on fixture mode until the live boundary is verified.
 ]
 ```
 
-PR 28 live wiring remains blocked until the user verifies this command locally.
+Historical note: the earlier directive said, “PR 28 live wiring remains blocked until the user verifies this command locally.” Later implementation superseded the wiring restriction, but not the original operational verification gate.
