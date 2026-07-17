@@ -1,7 +1,7 @@
 PYTHON ?= python3
 BUN ?= bun
 
-.PHONY: setup test demo dev smoke runtime-smoke
+.PHONY: setup test demo demo-live dev smoke runtime-smoke
 
 setup:
 	$(PYTHON) -m pip install --upgrade pip
@@ -16,6 +16,9 @@ test:
 
 demo:
 	./scripts/demo.sh
+
+demo-live:
+	./scripts/demo-live.sh
 
 dev:
 	./scripts/dev.sh

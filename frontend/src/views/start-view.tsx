@@ -46,9 +46,14 @@ const cardItemVariants: Variants = {
   },
 };
 
-/* What this demo is, readable in two seconds: deterministic, fixture
- * mode, nothing sensitive leaves the machine. */
-const DEMO_FACTS = ['Deterministic fixture replay', 'No live data, no secrets', 'Validated against frozen contracts'];
+const DEMO_FACTS = ['Fixture replay or labeled live run', 'Canonical demo data only', 'Validated against frozen contracts'];
+
+type TRunMode = 'fixture' | 'live';
+
+interface ICreateRunVariables {
+  mode: TRunMode;
+  droppedFiles?: IDroppedFile[];
+}
 
 const readFiles = async (files: File[]): Promise<IDroppedFile[]> => {
   return Promise.all(
@@ -67,8 +72,8 @@ const StartView = () => {
   const [dropError, setDropError] = useState<string | null>(null);
 
   const createRunMutation = useMutation({
-    mutationFn: async (droppedFiles: IDroppedFile[] | undefined) => {
-      const result = await api.createFixtureRun();
+    mutationFn: async ({ mode, droppedFiles }: ICreateRunVariables) => {
+      const result = mode === 'live' ? await api.createLiveRun() : await api.createFixtureRun();
       return { result, droppedFiles };
     },
     onSuccess: ({ result, droppedFiles }) => {
@@ -94,7 +99,7 @@ const StartView = () => {
     }
 
     setDropError(null);
-    createRunMutation.mutate(await readFiles(files));
+    createRunMutation.mutate({ mode: 'fixture', droppedFiles: await readFiles(files) });
   };
 
   return (
@@ -142,7 +147,9 @@ const StartView = () => {
         >
           <FileUp aria-hidden="true" className={cn('size-6', dragging ? 'text-primary dark:text-primary-subtle' : 'text-faint-foreground')} />
           <p className="text-sm font-medium">Drop a conversion spec, source data, and target schema</p>
-          <p className="text-2xs text-faint-foreground">Fixture mode recognizes the core banking input files and starts the persisted FastAPI run.</p>
+          <p className="text-2xs text-faint-foreground">
+            Dropped files start the deterministic fixture replay. Live mode uses the canonical repository inputs.
+          </p>
           {!!dropError && <p className="mt-1 max-w-[440px] text-2xs text-warning">{dropError}</p>}
           {createRunMutation.isError && (
             <p className="mt-1 max-w-[440px] text-2xs text-destructive">The FastAPI demo runtime did not start the run. Try again.</p>
@@ -157,16 +164,10 @@ const StartView = () => {
         animate="visible"
       >
         {DEMOS.map((demo) => (
-          <motion.button
+          <motion.div
             key={demo.id}
-            type="button"
             variants={shouldReduceMotion ? undefined : cardItemVariants}
-            onClick={() => {
-              setDropError(null);
-              createRunMutation.mutate(undefined);
-            }}
-            disabled={createRunMutation.isPending}
-            className="group flex flex-col rounded-xl border bg-card p-5 text-left transition-[border-color,box-shadow] duration-200 hover:border-primary/35 hover:shadow-lift disabled:cursor-wait disabled:opacity-70"
+            className="group flex flex-col rounded-xl border bg-card p-5 text-left transition-[border-color,box-shadow] duration-200 hover:border-primary/35 hover:shadow-lift"
           >
             <span className="font-mono text-3xs font-semibold tracking-eyebrow text-faint-foreground uppercase">{demo.runId}</span>
             <span className="mt-1.5 text-[15px] font-medium tracking-display">{demo.title}</span>
@@ -179,11 +180,35 @@ const StartView = () => {
                 </span>
               ))}
             </span>
-            <span className="mt-4 inline-flex w-fit items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-soft transition-[background-color,box-shadow] duration-200 group-hover:bg-primary/90 group-hover:shadow-lift">
-              <Play aria-hidden="true" className="size-3 fill-current" />
-              {createRunMutation.isPending ? 'Starting demo…' : 'Run the demo'}
+            <span className="mt-4 text-2xs text-faint-foreground">
+              Uses your OpenAI API key and local Codex CLI. Review the proposed diff before approval.
             </span>
-          </motion.button>
+            <span className="mt-3 flex flex-wrap items-center gap-2.5">
+              <button
+                type="button"
+                disabled={createRunMutation.isPending}
+                onClick={() => {
+                  setDropError(null);
+                  createRunMutation.mutate({ mode: 'live' });
+                }}
+                className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-soft transition-[background-color,box-shadow] duration-200 hover:bg-primary/90 hover:shadow-lift disabled:cursor-wait disabled:opacity-70"
+              >
+                <Play aria-hidden="true" className="size-3 fill-current" />
+                {createRunMutation.isPending && createRunMutation.variables.mode === 'live' ? 'Starting live run…' : 'Run Live GPT + Codex'}
+              </button>
+              <button
+                type="button"
+                disabled={createRunMutation.isPending}
+                onClick={() => {
+                  setDropError(null);
+                  createRunMutation.mutate({ mode: 'fixture' });
+                }}
+                className="inline-flex items-center rounded-full border bg-background px-4 py-1.5 text-xs font-medium transition-colors hover:bg-muted disabled:cursor-wait disabled:opacity-70"
+              >
+                {createRunMutation.isPending && createRunMutation.variables.mode === 'fixture' ? 'Starting fixture replay…' : 'Replay Fixture'}
+              </button>
+            </span>
+          </motion.div>
         ))}
       </motion.div>
     </div>

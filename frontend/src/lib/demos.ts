@@ -8,7 +8,6 @@ interface IDemoInput {
 interface IDemo {
   id: string;
   runId: string;
-  patchId: string;
   title: string;
   tagline: string;
   inputs: IDemoInput[];
@@ -19,7 +18,6 @@ const DEMOS: IDemo[] = [
   {
     id: 'core-banking',
     runId: 'RUN-001',
-    patchId: 'PATCH-001',
     title: 'Core banking migration',
     tagline: 'Account IDs, branch balancing, date hygiene',
     inputs: [
@@ -48,7 +46,17 @@ const DEMOS: IDemo[] = [
 ];
 
 const demoByRunId = (runId: string): IDemo | undefined => {
-  return DEMOS.find((demo) => demo.runId === runId);
+  const canonicalDemo = DEMOS[0];
+
+  if (runId === canonicalDemo.runId) {
+    return canonicalDemo;
+  }
+
+  if (/^RUN-[0-9]{3}$/.test(runId)) {
+    return { ...canonicalDemo, runId };
+  }
+
+  return undefined;
 };
 
 export type { IDemo, IDemoInput };

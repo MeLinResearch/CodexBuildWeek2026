@@ -5,7 +5,7 @@ import type traceabilityMatrixFixture from '@/mocks/traceability_matrix.fixture.
 
 type TFailure = typeof failureFixture;
 type TPatch = typeof patchFixture;
-type TRunStatus = typeof runStatusFixture;
+type TRunStatus = Omit<typeof runStatusFixture, 'mode'> & { mode: 'fixture' | 'live' };
 type TTraceabilityMatrix = typeof traceabilityMatrixFixture;
 
 interface ICreateRunResult {
@@ -23,7 +23,7 @@ interface IRerunResult {
   run_id: string;
   status: string;
   state: 'EVIDENCE_READY';
-  mode: 'fixture';
+  mode: 'fixture' | 'live';
 }
 
 type TApiRequestError = Error & {
@@ -63,6 +63,17 @@ const api = {
     return requestJson<ICreateRunResult>('/api/runs', {
       method: 'POST',
       body: JSON.stringify({ mode: 'fixture', fixture_set: 'core-banking' }),
+    });
+  },
+  createLiveRun: (): Promise<ICreateRunResult> => {
+    return requestJson<ICreateRunResult>('/api/runs', {
+      method: 'POST',
+      body: JSON.stringify({
+        mode: 'live',
+        implementation_doc_path: 'fixtures/implementation_doc.md',
+        source_data_path: 'fixtures/source_data/accounts.csv',
+        target_schema_path: 'fixtures/schemas/target_schema.json',
+      }),
     });
   },
   runStatus: (runId: string): Promise<TRunStatus> => {

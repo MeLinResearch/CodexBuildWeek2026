@@ -127,9 +127,10 @@ const TopBar = () => {
               }
             />
             <TooltipContent>
-              Codex {runStatus.mode}, task {runStatus.mode === 'fixture' ? 'fixture' : runStatus.run_id}, sandbox read-only,{' '}
-              {runStatus.mode === 'fixture' ? '0 live GPT-5.6 calls (fixture replay)' : 'GPT-5.6 calls live'}. All outputs schema-validated against
-              the frozen contracts.
+              {runStatus.mode === 'fixture'
+                ? 'Fixture replay. 0 live GPT-5.6 calls and 0 live Codex calls.'
+                : 'Live GPT-5.6 requirement extraction and live read-only Codex patch proposal. Approved code is verified in a disposable workspace.'}{' '}
+              All outputs schema-validated against the frozen contracts.
             </TooltipContent>
           </Tooltip>
         )}

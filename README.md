@@ -1,22 +1,41 @@
 # Release Assurance: Codex-Gated Migration Testing for Banks
 
-It turns a bank conversion spec into executable migration tests, maps every failure back to a requirement, lets Codex propose fixes, and produces an audit-ready evidence pack after approval.
+Release Assurance turns the canonical banking conversion specification into schema-validated requirements, runs deterministic migration checks, maps failures back to requirements, presents a Codex patch proposal for human review, and produces downloadable audit evidence after the approval-gated rerun.
 
-## Commands
+## Setup and commands
 
-- `make setup`
-- `make test`
-- `make demo`
-- `make dev`
-- `make smoke`
+```bash
+make setup
+make test
+make demo
+make demo-live
+make dev
+make smoke
+```
 
-`make demo` is fixture mode, zero secrets, no live model calls, no live Codex calls.
+### Deterministic fixture demo
 
-`make demo-live` is not implemented yet. Recorded Devpost video must use live mode later. Current scaffold is frontend-ready and fixture-backed.
+`make demo` runs the deterministic fixture mode with zero secrets, zero live GPT-5.6 calls, and zero live Codex calls. It remains the clean-laptop, offline, and judge-runnable fallback. The fixture replay uses the frozen canonical banking inputs and model outputs while preserving the same persisted API, approval, rerun, and evidence flow.
 
-## Where GPT-5.6 and Codex work
+### Live recording runtime
 
-- GPT-5.6 will later extract requirements, generate adversarial records, and support root-cause reasoning.
-- Codex will later inspect the repo, generate tests, propose patches, and apply approved patches.
-- This scaffold intentionally uses frozen fixture outputs only.
-- Fixture mode is for frontend development, CI, determinism tests, and judge-runnable offline demo.
+`make demo-live` starts the backend and frontend for the live recording path. It requires:
+
+- a nonempty `OPENAI_API_KEY`
+- an installed and authenticated local Codex CLI (or an executable selected with `RELEASE_ASSURANCE_CODEX_EXECUTABLE`)
+
+Starting `make demo-live` performs prerequisite checks, including `codex --version`, but makes no paid model call. The paid live flow begins only when **Run Live GPT + Codex** is clicked in the browser.
+
+In the live flow:
+
+1. Live GPT-5.6 extracts requirements from the canonical implementation document and validates the resulting manifest against the frozen contracts.
+2. Deterministic migration checks run against the canonical banking records.
+3. Live Codex proposes a read-only patch diff.
+4. A human must inspect the proposed diff, enter an approval note, and approve it before a rerun can occur.
+5. The approved patch is applied only to a disposable workspace, where the deterministic acceptance checks run and the resulting evidence pack becomes downloadable.
+
+The patched code executes with the user's normal machine permissions. The disposable workspace protects the repository from modification, but it is **not a security sandbox**.
+
+## Scope and limitations
+
+The deterministic acceptance verifier is specifically designed for the canonical banking demo fixture; it is not a general migration-verification engine. Browser actions use only the canonical repository input paths, and dropped files select the deterministic fixture replay rather than uploading their contents. Fixture mode remains the reproducible fallback for CI, clean laptops, and judges without live credentials.

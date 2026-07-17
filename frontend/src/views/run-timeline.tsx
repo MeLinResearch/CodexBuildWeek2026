@@ -3,7 +3,7 @@ import { ArrowDown } from 'lucide-react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
-import { patchesQuery, traceabilityMatrixQuery } from '@/api/queries';
+import { patchesQuery, runStatusQuery, traceabilityMatrixQuery } from '@/api/queries';
 import { Dot } from '@/components/dot';
 import { type IMinimapStep, StepMinimap } from '@/components/step-minimap';
 import { AgentStep } from '@/components/timeline/agent-step';
@@ -49,6 +49,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   const { droppedFiles, approval, setReplayState } = useRunUi();
   const { data: matrix } = useSuspenseQuery(traceabilityMatrixQuery(demo.runId));
   const { data: patches } = useSuspenseQuery(patchesQuery(demo.runId));
+  const { data: runStatus } = useSuspenseQuery(runStatusQuery(demo.runId));
   useRunStateSync(demo.runId);
 
   const [hoveredFailureId, setHoveredFailureId] = useState<string | null>(null);
@@ -184,7 +185,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
         <div className="eyebrow flex items-center gap-1.5">
           {demo.runId}
           <Dot />
-          fixture replay
+          {runStatus.mode === 'fixture' ? 'fixture replay' : 'live GPT + Codex'}
         </div>
         <h2 className="mt-1 text-[22px] font-medium tracking-display">
           {demo.title}, <span className="grad">gated by you</span>
@@ -204,7 +205,11 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
       <AgentStep
         id="step-requirements"
         title="Extracting requirements"
-        activity="GPT-5.6 reads the spec and emits a schema-validated control manifest"
+        activity={
+          runStatus.mode === 'fixture'
+            ? 'Replaying the frozen schema-validated control manifest'
+            : 'GPT-5.6 reads the spec and emits a schema-validated control manifest'
+        }
         meta={`${requirementIds.length} requirements`}
         status={statusFor(1)}
       >
@@ -214,7 +219,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
       <AgentStep
         id="step-tests"
         title="Generating and executing tests"
-        activity="Codex writes one migration test per requirement and runs them against the migrated records"
+        activity="Deterministic migration checks execute against the canonical source records"
         meta={
           <>
             {testRows.length} tests
@@ -240,7 +245,11 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
       <AgentStep
         id="step-patch"
         title="Proposing a fix"
-        activity="Codex proposes a diff; hover a fix location above to see its file light up"
+        activity={
+          runStatus.mode === 'fixture'
+            ? 'Replaying the frozen Codex patch proposal'
+            : 'Codex proposes a read-only diff; hover a fix location above to see its file light up'
+        }
         meta={patch.patch_id}
         status={statusFor(4)}
       >
