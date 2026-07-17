@@ -28,3 +28,11 @@ def test_rejects_outside_allowlist_and_oversize():
         validate_proposed_diff(DIFF, ("other.py",), 10000)
     with pytest.raises(UnsafePatchError):
         validate_proposed_diff(DIFF, ("app.py",), 2)
+
+
+def test_rejects_file_markers_that_do_not_match_header():
+    disguised = DIFF.replace("--- a/app.py", "--- a/secrets.txt").replace(
+        "+++ b/app.py", "+++ b/secrets.txt"
+    )
+    with pytest.raises(UnsafePatchError, match="file markers"):
+        validate_proposed_diff(disguised, ("app.py",), 10000)

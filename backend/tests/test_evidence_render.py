@@ -81,3 +81,11 @@ def test_transition_null_from_state_renders_none_and_fixture_sentence_present():
     html = render()
     assert "<td>none</td>" in html
     assert "Fixture evidence, no live model calls" in html
+
+
+def test_live_evidence_is_not_labeled_as_fixture():
+    data = rows()
+    data["run"] = RunRow("RUN-002", "PATCH_PENDING", "live", "2026-07-12.1", "t0", "t1")
+    html = render_evidence_html(**data)
+    assert "Live evidence generated from validated GPT and Codex outputs" in html
+    assert "Fixture evidence, no live model calls" not in html
