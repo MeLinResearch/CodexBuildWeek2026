@@ -1,7 +1,7 @@
 import { PatchDiff } from '@pierre/diffs/react';
 import { useState } from 'react';
 
-import { type IDiffFile, mapFailuresToFiles, parsePatchFiles, splitPatch } from '@/lib/diff-hunks';
+import { compactPatchContext, type IDiffFile, mapFailuresToFiles, parsePatchFiles, splitPatch } from '@/lib/diff-hunks';
 import { useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useRunUi } from '@/state/run-store';
@@ -62,7 +62,7 @@ const DiffViewer = ({ patch, failureIds, hoveredFailureId, onHoverFailure }: IDi
 
   const files = parsePatchFiles(patch);
   const failureFiles = mapFailuresToFiles(failureIds, files);
-  const visibleSections = splitPatch(patch);
+  const visibleSections = splitPatch(compactPatchContext(patch));
 
   const failuresForPath = (path: string): string[] => {
     return failureIds.filter((failureId) => failureFiles[failureId] === path);
@@ -104,18 +104,20 @@ const DiffViewer = ({ patch, failureIds, hoveredFailureId, onHoverFailure }: IDi
               onHoverFailure={onHoverFailure}
               onOpenFailure={(failureId) => revealFailure(failureId)}
             />
-            <PatchDiff
-              key={`${theme}-${diffStyle}`}
-              patch={section.patch}
-              disableWorkerPool
-              options={{
-                theme: { light: 'github-light-default', dark: 'github-dark-default' },
-                themeType: theme,
-                diffStyle,
-                hunkSeparators: 'simple',
-              }}
-              renderCustomHeader={() => null}
-            />
+            <div data-director-target="diff-content">
+              <PatchDiff
+                key={`${theme}-${diffStyle}`}
+                patch={section.patch}
+                disableWorkerPool
+                options={{
+                  theme: { light: 'github-light-default', dark: 'github-dark-default' },
+                  themeType: theme,
+                  diffStyle,
+                  hunkSeparators: 'simple',
+                }}
+                renderCustomHeader={() => null}
+              />
+            </div>
           </div>
         );
       })}

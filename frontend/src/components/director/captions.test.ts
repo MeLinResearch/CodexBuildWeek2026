@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 
-import { buildTimedCaptionWords, captionWordIndexAt } from '@/lib/demo-director-captions';
+import { buildTimedCaptionWords, captionWordIndexAt } from '@/components/director/captions';
 
 describe('demo director timed captions', () => {
   test('maps every transcript word onto the real audio duration', () => {

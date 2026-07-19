@@ -78,7 +78,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
 
   if (approval) {
     return (
-      <div className="rounded-lg border bg-card p-4 shadow-soft">
+      <div data-director-target="decision-record" className="rounded-lg border bg-card p-4 shadow-soft">
         <div className="flex flex-wrap items-center gap-2.5 text-sm">
           <StatusChip status={approval.status} />
           <span className="text-muted-foreground">
@@ -103,7 +103,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   }
 
   return (
-    <div className="rounded-lg border border-primary/35 bg-card p-4 shadow-lift">
+    <div data-director-target="decision-gate" className="rounded-lg border border-primary/35 bg-card p-4 shadow-lift">
       <div className="flex items-center gap-2.5">
         <span aria-hidden="true" className="size-2 rounded-full bg-primary animate-attn-pulse dark:bg-primary-subtle" />
         <h3 className="text-[15px] font-medium tracking-display">Waiting for your decision</h3>

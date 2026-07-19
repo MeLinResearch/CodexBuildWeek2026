@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { DIRECTOR_APPROVAL_NOTE, FALLBACK_LINES, INTRO_LINES, isDirectorSpaceKey, isDirectorTurn } from '@/lib/demo-director-script';
+import { DIRECTOR_APPROVAL_NOTE, FALLBACK_LINES, INTRO_LINES, isDirectorSpaceKey, isDirectorTurn } from '@/components/director/script';
 
 const spaceEvent = {
   code: 'Space',

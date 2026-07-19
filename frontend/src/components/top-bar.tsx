@@ -65,7 +65,7 @@ const TopBar = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 px-6 py-3.5 backdrop-blur-xl">
+    <header data-app-header className="sticky top-0 z-30 px-6 py-3.5 backdrop-blur-xl">
       <motion.div
         className="relative mx-auto flex h-9 w-full items-center gap-3.5"
         initial={false}

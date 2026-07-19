@@ -1,5 +1,5 @@
 import { refAppViewport } from '@/lib/app-viewport';
-import { DemoDirectorOverlay, delay, type IPreparedPlaybackOptions, type IPreparedSpeech } from '@/lib/demo-director-overlay';
+import { DemoDirectorOverlay, delay, type IPreparedPlaybackOptions, type IPreparedSpeech } from '@/components/director/controller';
 import {
   CLOSE_LINES,
   constrainDirectorTurn,
@@ -12,8 +12,8 @@ import {
   isDirectorTurn,
   type TDirectorPhase,
   VERIFY_WAIT_LINE,
-} from '@/lib/demo-director-script';
-import { setDirectorTimelinePosition } from '@/lib/use-timeline-sequence';
+} from '@/components/director/script';
+import { setDirectorTimelinePosition } from '@/components/director/timeline-sequence';
 import { useRunUi } from '@/state/run-store';
 
 const LIVE_RESULT_BUDGET_MS = 90_000;
@@ -21,7 +21,7 @@ const MUSIC_TAIL_MS = 20_000;
 const RECORDING_BUDGET_MS = 175_000;
 const STEP_TIMEOUT_MS = 45_000;
 const VIEWPORT_BOTTOM_INSET_PX = 36;
-const VIEWPORT_TOP_INSET_PX = 80;
+const VIEWPORT_HEADER_GAP_PX = 12;
 
 type TDirectorState = 'idle' | 'running' | 'complete' | 'failed';
 
@@ -116,15 +116,15 @@ const scrollToElement = async (element: HTMLElement, block: ScrollLogicalPositio
   const viewport = refAppViewport.current;
 
   if (!viewport) {
-    element.scrollIntoView({ behavior: 'smooth', block });
-    await delay(520);
-    return;
+    throw new Error('The application ScrollArea viewport is not mounted');
   }
 
   const scrollTargetFor = (alignment: ScrollLogicalPosition): number => {
     const viewportBounds = viewport.getBoundingClientRect();
     const elementBounds = element.getBoundingClientRect();
-    const safeTop = viewportBounds.top + VIEWPORT_TOP_INSET_PX;
+    const header = viewport.querySelector<HTMLElement>('[data-app-header]');
+    const headerBottom = header?.getBoundingClientRect().bottom ?? viewportBounds.top;
+    const safeTop = Math.max(viewportBounds.top, headerBottom) + VIEWPORT_HEADER_GAP_PX;
     const safeBottom = viewportBounds.bottom - VIEWPORT_BOTTOM_INSET_PX;
     const safeHeight = safeBottom - safeTop;
     let delta = 0;
@@ -267,8 +267,10 @@ class DemoDirector {
             return;
           }
 
+          await delay(1_800);
           this.overlay?.setStatus('Starting live run', 'attention');
           await this.overlay?.moveCursorTo(liveButton, true);
+          this.overlay?.hideCursor();
           this.liveDeadline = performance.now() + LIVE_RESULT_BUDGET_MS;
         },
       });
@@ -366,6 +368,7 @@ class DemoDirector {
       },
     );
 
+    let firstFailedTestRow: HTMLElement | null = null;
     const failuresPlayed = this.queuePhasePlayback(
       this.queuePhaseGeneration(
         'failures',
@@ -383,12 +386,19 @@ class DemoDirector {
             'step-tests',
             (element) => /TEST-\d{3}/.test(normalizedText(element)) && /failed/i.test(normalizedText(element)),
           );
+          firstFailedTestRow = step.querySelector<HTMLElement>('[data-director-target="failed-test-row"]');
           await scrollToElement(step, 'start');
+        },
+        onLinePlaybackStarted: async (index) => {
+          if (index === 1 && firstFailedTestRow) {
+            await delay(650);
+            await overlay.moveCursorTo(firstFailedTestRow);
+          }
         },
       },
     );
 
-    let firstFailedRow: HTMLElement | null = null;
+    let traceabilityRows: HTMLElement[] = [];
     const traceabilityPlayed = this.queuePhasePlayback(
       this.queuePhaseGeneration(
         'traceability',
@@ -401,126 +411,125 @@ class DemoDirector {
       ),
       {
         before: async () => {
+          overlay.hideCursor();
           setDirectorTimelinePosition(7);
           const step = await waitForStep('step-matrix', (element) => element.querySelector('table') !== null);
-          firstFailedRow = await waitForValue(
-            () => step.querySelector<HTMLElement>('tbody tr[id^="matrix-row-"]'),
-            STEP_TIMEOUT_MS,
-            'No failed traceability row became available',
+          traceabilityRows = Array.from(
+            step.querySelectorAll<HTMLElement>('tbody tr[data-director-expandable="true"]'),
           );
-          await scrollToElement(firstFailedRow, 'center');
+          if (traceabilityRows.length === 0) {
+            throw new Error('No expandable traceability rows became available');
+          }
+          await scrollToElement(step, 'start');
         },
-        onFirstPlaybackStarted: async () => {
-          await delay(1_350);
-          if (firstFailedRow) {
-            await overlay.moveCursorTo(firstFailedRow, true);
+        onLinePlaybackStarted: async (index) => {
+          if (index !== 0) {
+            return;
+          }
+
+          await delay(750);
+          for (const row of traceabilityRows) {
+            await scrollToElement(row, 'center');
+            const shouldExpand = row.dataset.directorExpanded !== 'true';
+            await overlay.moveCursorTo(row, shouldExpand, { xRatio: 0.3, yRatio: 0.5 });
+            await delay(180);
           }
         },
       },
     );
 
+    let patchFixLink: HTMLButtonElement | null = null;
+    let patchDiffViewer: HTMLElement | null = null;
     const patchPlayed = this.queuePhasePlayback(
       this.queuePhaseGeneration(
         'patch',
         async () => [
           observedText(await waitForDirectorObservation('director-observation-patch')),
           'A complete read-only diff is visible for human review.',
-          'On screen the cursor follows the fix link from the failed record straight into the diff, then demonstrates the stacked and split diff views.',
+          'On screen the cursor follows the fix link from the failed record straight into the complete diff.',
         ],
         1,
       ),
       {
-        /* The UI's own guided jump: clicking the fix link inside the
-         * expanded failure scrolls to the exact diff file and flashes
-         * its failure chips, which beats a plain scroll. */
         before: async () => {
+          overlay.hideCursor();
           setDirectorTimelinePosition(9);
           const patchStep = await waitForStep('step-patch', (step) => /proposed by Codex/i.test(normalizedText(step)));
-          const fixLink = findVisibleButton(/^reconcile\//);
-
-          if (fixLink) {
-            await overlay.moveCursorTo(fixLink, true);
-            const diffViewer = await waitForValue(
-              () => patchStep.querySelector<HTMLElement>('[data-director-target="diff-viewer"]'),
-              STEP_TIMEOUT_MS,
-              'The proposed diff did not become visible',
-            );
-            await scrollToElement(diffViewer, 'start');
-            return;
+          patchFixLink = findVisibleButton(/^reconcile\//);
+          patchDiffViewer = patchStep.querySelector<HTMLElement>('[data-director-target="diff-viewer"]');
+        },
+        onFirstPlaybackStarted: async () => {
+          await delay(350);
+          if (patchFixLink) {
+            await scrollToElement(patchFixLink, 'center');
+            await overlay.moveCursorTo(patchFixLink, true);
           }
-
-          await scrollToElement(patchStep, 'start');
+          if (patchDiffViewer) {
+            await scrollToElement(patchDiffViewer, 'start');
+          }
         },
       },
     );
 
     let reviewDiffFile: HTMLElement | null = null;
     let reviewFileHeader: HTMLElement | null = null;
-    let reviewFailureChip: HTMLButtonElement | null = null;
+    let reviewDiffContent: HTMLElement | null = null;
     const reviewPlayed = this.queuePhasePlayback(
       this.queuePhaseGeneration(
         'review',
         async () => [
           observedText(await waitForDirectorObservation('director-observation-patch')),
-          'The complete read-only diff is visible, and the cursor will inspect its file, failure link, and Split and Stacked views.',
+          'The complete read-only diff is visible, and the cursor will inspect its header and changed lines.',
           'Use the required three-person review choreography while the cursor inspects the visible diff.',
         ],
         3,
       ),
       {
         before: async () => {
+          overlay.hideCursor();
           setDirectorTimelinePosition(9);
           const patchStep = await waitForStep('step-patch', (step) => step.querySelector('[data-director-target="diff-viewer"]') !== null);
           reviewDiffFile = patchStep.querySelector<HTMLElement>('[data-director-target="diff-file"]');
           reviewFileHeader = patchStep.querySelector<HTMLElement>('[data-director-target="diff-file-header"]');
-          reviewFailureChip = patchStep.querySelector<HTMLButtonElement>('[data-director-target="diff-failure"]');
+          reviewDiffContent = patchStep.querySelector<HTMLElement>('[data-director-target="diff-content"]');
 
-          if (!reviewDiffFile || !reviewFileHeader) {
+          if (!reviewDiffFile || !reviewFileHeader || !reviewDiffContent) {
             throw new Error('The diff review targets did not become ready');
           }
-
-          await scrollToElement(reviewFileHeader, 'start');
         },
         onLinePlaybackStarted: async (index) => {
           if (index === 0 && reviewFileHeader) {
-            await overlay.moveCursorTo(reviewFileHeader);
-            return;
-          }
-
-          if (index === 1) {
-            const splitButton = findVisibleButton('Split');
-
-            if (splitButton) {
-              await overlay.moveCursorTo(splitButton, true);
-              await delay(650);
-            }
-
-            if (reviewFailureChip) {
-              reviewFailureChip.focus({ preventScroll: true });
-              await scrollToElement(reviewFailureChip, 'center');
-              await overlay.moveCursorTo(reviewFailureChip);
-              await delay(500);
-            }
-
-            const stackedButton = findVisibleButton('Stacked');
-            if (stackedButton) {
-              await overlay.moveCursorTo(stackedButton, true);
-            }
-            if (reviewFileHeader) {
-              await scrollToElement(reviewFileHeader, 'start');
-            }
-            return;
-          }
-
-          if (index === 2 && reviewFileHeader) {
-            reviewFailureChip?.blur();
             await scrollToElement(reviewFileHeader, 'start');
-            await overlay.moveCursorTo(reviewFileHeader);
+            await overlay.moveCursorTo(reviewFileHeader, false, { xRatio: 0.28, yRatio: 0.5 });
+            return;
+          }
+
+          if (index === 1 && reviewDiffContent) {
+            await scrollToElement(reviewDiffContent, 'start');
+            await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.38, yRatio: 0.25 });
+            await delay(260);
+            await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.68, yRatio: 0.48 });
+            return;
+          }
+
+          if (index === 2 && reviewDiffFile && reviewDiffContent) {
+            await scrollToElement(reviewDiffContent, 'start');
+            await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.42, yRatio: 0.28 });
+          }
+        },
+        afterLine: async (index) => {
+          if (index === 2 && reviewDiffFile && reviewDiffContent) {
+            await delay(350);
+            await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.68, yRatio: 0.5 });
+            await delay(300);
+            await scrollToElement(reviewDiffFile, 'end');
+            await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.45, yRatio: 0.76 });
           }
         },
       },
     );
 
+    let approvalStep: HTMLElement | null = null;
     let approvalButton: HTMLButtonElement | null = null;
     let approvalDialog: HTMLElement | null = null;
     let approvalTextarea: HTMLTextAreaElement | null = null;
@@ -536,16 +545,27 @@ class DemoDirector {
       ),
       {
         before: async () => {
+          overlay.hideCursor();
           setDirectorTimelinePosition(10);
-          approvalButton = await waitForValue(
-            () => findVisibleButton('Approve patch'),
+          approvalStep = await waitForValue(
+            () => {
+              const step = document.getElementById('step-decision');
+              return step && findVisibleButton('Approve patch', step) ? step : null;
+            },
             STEP_TIMEOUT_MS,
             'The human decision gate did not become ready',
           );
-          await scrollToElement(approvalButton, 'end');
-          await overlay.moveCursorTo(approvalButton);
+          approvalButton = findVisibleButton('Approve patch', approvalStep);
         },
         onLinePlaybackStarted: async (index) => {
+          if (index === 0 && approvalButton && approvalStep) {
+            await delay(500);
+            await scrollToElement(approvalStep, 'end');
+            await delay(300);
+            await overlay.moveCursorTo(approvalButton);
+            return;
+          }
+
           if (index !== 1 || !approvalTextarea) {
             return;
           }
@@ -561,7 +581,7 @@ class DemoDirector {
               throw new Error('The Approve patch button is unavailable');
             }
 
-            await overlay.moveCursorTo(approvalButton, true);
+            await overlay.moveCursorTo(approvalButton, true, { travelMs: 120 });
             approvalDialog = await waitForValue(
               () => {
                 const dialog = document.querySelector<HTMLElement>('[data-slot="dialog-content"]');
@@ -609,6 +629,18 @@ class DemoDirector {
       STEP_TIMEOUT_MS,
       'Melinda’s approval was not recorded',
     );
+    const recordedDecision = await waitForValue(
+      () => {
+        const step = document.getElementById('step-decision');
+        const record = step?.querySelector<HTMLElement>('[data-director-target="decision-record"]');
+        return step && record ? { step, record } : null;
+      },
+      STEP_TIMEOUT_MS,
+      'The recorded decision did not become visible',
+    );
+    overlay.hideCursor();
+    await scrollToElement(recordedDecision.step, 'start');
+    await overlay.moveCursorTo(recordedDecision.record, false, { xRatio: 0.25, yRatio: 0.35 });
 
     /* Scripted beat while the real apply-and-verify runs: the AI
      * teammate sweating its own patch, claiming nothing. */
@@ -625,18 +657,18 @@ class DemoDirector {
       60_000,
       'The approved rerun did not produce evidence',
     );
-    const evidencePlayed = this.queuePhasePlayback(
-      this.queuePhaseGeneration(
-        'evidence',
-        async () => [
-          observedText(evidenceStep),
-          'The approved deterministic rerun passed in a disposable workspace.',
-          'The verified suite contains 168 backend tests and 27 frontend tests.',
-        ],
-        2,
-      ),
-      { before: async () => scrollToElement(evidenceStep, 'start') },
+    const evidencePrepared = this.queuePhaseGeneration(
+      'evidence',
+      async () => [
+        observedText(evidenceStep),
+        'The approved deterministic rerun passed in a disposable workspace.',
+        'The verified suite contains 168 backend tests and 27 frontend tests.',
+      ],
+      2,
     );
+    overlay.hideCursor();
+    await scrollToElement(evidenceStep, 'end');
+    const evidencePlayed = this.queuePhasePlayback(evidencePrepared);
 
     /* The close is scripted: the recording's final impression never
      * gambles on generation. It still synthesizes while the evidence
@@ -648,14 +680,14 @@ class DemoDirector {
     );
     const closePlayed = this.queuePhasePlayback(closePrepared, {
       before: async () => {
+        overlay.setStatus('168 backend · 27 frontend');
+      },
+      onFirstPlaybackStarted: async () => {
         const evidenceButton = findVisibleButton('Evidence pack');
 
         if (evidenceButton) {
-          await scrollToElement(evidenceButton, 'end');
           await overlay.moveCursorTo(evidenceButton);
         }
-
-        overlay.setStatus('168 backend · 27 frontend');
       },
     });
 

@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { patchesQuery, runStatusQuery, traceabilityMatrixQuery } from '@/api/queries';
+import { directorTimelineIsControlled, type IStepTiming, useTimelineSequence } from '@/components/director/timeline-sequence';
 import { Dot } from '@/components/dot';
 import { type IMinimapStep, StepMinimap } from '@/components/step-minimap';
 import { AgentStep } from '@/components/timeline/agent-step';
@@ -18,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import type { IDemo } from '@/lib/demos';
 import { mapFailuresToFiles, parsePatchFiles } from '@/lib/diff-hunks';
 import { useRunStateSync } from '@/lib/use-run-state-sync';
-import { directorTimelineIsControlled, type IStepTiming, useTimelineSequence } from '@/lib/use-timeline-sequence';
 import { cn } from '@/lib/utils';
 import { type TReplayState, useRunUi } from '@/state/run-store';
 
@@ -129,11 +129,24 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     setReplayState(REPLAY_STATES[stepsRevealed] ?? 'PATCH_PENDING');
   }, [stepsRevealed, setReplayState]);
 
+  const scrollViewportToEnd = useCallback((): void => {
+    const viewport = refScroll.current;
+
+    if (!viewport) {
+      return;
+    }
+
+    viewport.scrollTo({
+      top: viewport.scrollHeight - viewport.clientHeight,
+      behavior: shouldReduceMotion ? 'auto' : 'smooth',
+    });
+  }, [refScroll, shouldReduceMotion]);
+
   const scrollToEnd = useCallback((): void => {
-    refEnd.current?.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth', block: 'end' });
+    scrollViewportToEnd();
     refFollowing.current = true;
     setStepsBelow(0);
-  }, [shouldReduceMotion]);
+  }, [scrollViewportToEnd]);
 
   useEffect(() => {
     if (directorControlled || revealedCount <= 1) {
@@ -141,11 +154,11 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     }
 
     if (refFollowing.current) {
-      refEnd.current?.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth', block: 'end' });
+      scrollViewportToEnd();
     } else {
       setStepsBelow((count) => count + 1);
     }
-  }, [directorControlled, revealedCount, shouldReduceMotion]);
+  }, [directorControlled, revealedCount, scrollViewportToEnd]);
 
   const patch = patches[0];
 

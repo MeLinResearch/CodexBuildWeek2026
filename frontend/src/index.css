@@ -88,6 +88,11 @@ html[data-demo-director='music-tail'] * {
     --ease-fluid: cubic-bezier(0.3, 0, 0, 1);
     --animate-attn-pulse: attn-pulse 2s ease-in-out infinite;
     --animate-row-flash: row-flash 0.9s ease-out 1;
+    --animate-director-wave: director-wave 0.62s ease-in-out infinite alternate;
+    --animate-director-message-in: director-message-in 0.3s cubic-bezier(.16, 1, .3, 1);
+    --animate-director-timer-in: director-timer-in 0.5s cubic-bezier(.16, 1, .3, 1) both;
+    --animate-director-timer-live: director-timer-live 1.2s ease-in-out infinite alternate;
+    --animate-director-click-ring: director-click-ring 0.38s ease-out;
 
     @keyframes attn-pulse {
         0%,
@@ -105,6 +110,52 @@ html[data-demo-director='music-tail'] * {
         }
         100% {
             background-color: transparent;
+        }
+    }
+
+    @keyframes director-wave {
+        to {
+            opacity: 0.68;
+            transform: scaleY(0.45);
+        }
+    }
+
+    @keyframes director-message-in {
+        from {
+            opacity: 0;
+            transform: translateY(9px);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @keyframes director-timer-in {
+        from {
+            opacity: 0;
+            transform: translateY(12px) scale(0.94);
+        }
+        to {
+            opacity: 1;
+            transform: none;
+        }
+    }
+
+    @keyframes director-timer-live {
+        to {
+            opacity: 0.46;
+        }
+    }
+
+    @keyframes director-click-ring {
+        0% {
+            opacity: 0.9;
+            transform: scale(0.35);
+        }
+        100% {
+            opacity: 0;
+            transform: scale(1.45);
         }
     }
 }
