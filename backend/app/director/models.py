@@ -51,8 +51,8 @@ class DirectorSpeech:
 
 ALLOWED_SPEAKERS: dict[DirectorPhase, frozenset[DirectorSpeaker]] = {
     "live_wait": frozenset({"melinda", "pivanov"}),
-    "requirements": frozenset({"codex", "pivanov"}),
-    "failures": frozenset({"codex", "melinda"}),
+    "requirements": frozenset({"pivanov"}),
+    "failures": frozenset({"melinda", "pivanov"}),
     "traceability": frozenset({"codex", "pivanov"}),
     "patch": frozenset({"codex"}),
     "review": frozenset({"codex", "melinda", "pivanov"}),

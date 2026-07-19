@@ -41,7 +41,7 @@ describe('demo director browser contract', () => {
     ).toBe(false);
   });
 
-  it('keeps only concise emergency fallbacks hardcoded', () => {
+  it('keeps the authored intro and emergency fallbacks concise', () => {
     const fallbackWords = Object.entries(FALLBACK_LINES)
       .filter(([phase]) => phase !== 'intro')
       .flatMap(([, lines]) => lines)
@@ -51,11 +51,22 @@ describe('demo director browser contract', () => {
     expect(Object.keys(FALLBACK_LINES)).toHaveLength(10);
     expect(fallbackWords).toBeLessThan(190);
     expect(introWords).toBeLessThan(90);
-    expect(INTRO_LINES.map((line) => line.speaker)).toEqual(['pivanov', 'codex', 'melinda', 'melinda', 'codex']);
-    expect(INTRO_LINES.find((line) => line.text.includes('welcome to Release Assurance'))?.speaker).toBe('melinda');
+    expect(INTRO_LINES.map((line) => line.speaker)).toEqual([
+      'pivanov',
+      'melinda',
+      'melinda',
+      'melinda',
+      'pivanov',
+      'melinda',
+      'melinda',
+      'codex',
+      'codex',
+      'melinda',
+    ]);
+    expect(INTRO_LINES.find((line) => line.text.includes('This is Release Assurance'))?.speaker).toBe('melinda');
     expect(FALLBACK_LINES.intro).toBe(INTRO_LINES);
-    expect(FALLBACK_LINES.requirements.map((line) => line.speaker)).toEqual(['pivanov', 'codex']);
-    expect(FALLBACK_LINES.failures.map((line) => line.speaker)).toEqual(['melinda', 'codex']);
+    expect(FALLBACK_LINES.requirements.map((line) => line.speaker)).toEqual(['pivanov']);
+    expect(FALLBACK_LINES.failures.map((line) => line.speaker)).toEqual(['melinda', 'pivanov']);
     expect(FALLBACK_LINES.traceability.map((line) => line.speaker)).toEqual(['pivanov', 'codex']);
     expect(FALLBACK_LINES.review.map((line) => line.speaker)).toEqual(['pivanov', 'codex', 'melinda']);
     expect(FALLBACK_LINES.approval.map((line) => line.speaker)).toEqual(['melinda', 'melinda']);

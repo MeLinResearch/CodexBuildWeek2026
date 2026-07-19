@@ -4,6 +4,9 @@ Release Assurance turns the canonical banking conversion specification into sche
 
 ## Setup and commands
 
+The Make targets work on macOS and Linux, and on Windows when GNU Make is
+installed. Windows users without GNU Make can run the Bun commands shown below.
+
 ```bash
 make setup
 make test
@@ -51,9 +54,12 @@ Starting `make demo-live` performs prerequisite checks, including `codex --versi
 On Windows PowerShell, start the same one-terminal live runtime from the repository root:
 
 ```powershell
-$env:OPENAI_API_KEY = "..."
+$env:OPENAI_API_KEY = "<your-openai-api-key>"
 bun run scripts/demo-live.ts
 ```
+
+The launcher resolves npm-installed Codex command shims on Windows and invokes
+`codex.cmd` through the Windows command processor automatically.
 
 The live GPT plus Codex implementation exists, but it has not completed a supervised paid-call rehearsal in the target recording environment.
 

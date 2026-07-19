@@ -1,3 +1,4 @@
+import base64
 import json
 from types import SimpleNamespace
 
@@ -19,20 +20,23 @@ class FakeResponses:
         return SimpleNamespace(output_text=self.output_text)
 
 
-class FakeSpeech:
+class FakeChatCompletions:
     def __init__(self, audio: bytes = b"ID3-director-audio"):
         self.audio = audio
         self.calls: list[dict] = []
 
     def create(self, **kwargs):
         self.calls.append(kwargs)
-        return SimpleNamespace(content=self.audio)
+        encoded_audio = base64.b64encode(self.audio).decode("ascii")
+        audio = SimpleNamespace(data=encoded_audio)
+        message = SimpleNamespace(audio=audio)
+        return SimpleNamespace(choices=[SimpleNamespace(message=message)])
 
 
 class FakeOpenAI:
     def __init__(self, output_text: str):
         self.responses = FakeResponses(output_text)
-        self.audio = SimpleNamespace(speech=FakeSpeech())
+        self.chat = SimpleNamespace(completions=FakeChatCompletions())
 
 
 def _request(phase="patch", max_lines=1):
@@ -92,8 +96,8 @@ def test_requires_human_approval_choreography():
 @pytest.mark.parametrize(
     ("phase", "speakers"),
     [
-        ("requirements", ["pivanov", "codex"]),
-        ("failures", ["melinda", "codex"]),
+        ("requirements", ["pivanov"]),
+        ("failures", ["melinda", "pivanov"]),
         ("traceability", ["pivanov", "codex"]),
         ("review", ["pivanov", "codex", "melinda"]),
         ("approval", ["melinda", "melinda"]),
@@ -183,15 +187,16 @@ def test_generates_runtime_speech_with_speaker_voice():
     speech = client.synthesize(DirectorSpeechRequest(speaker="codex", text="The patch is ready for review."))
 
     assert speech.audio == b"ID3-director-audio"
-    call = fake.audio.speech.calls[0]
+    call = fake.chat.completions.calls[0]
     assert call["model"] == "gpt-4o-mini-tts"
-    assert call["voice"] == "verse"
-    assert call["input"] == "The patch is ready for review."
-    assert call["response_format"] == "mp3"
-    assert call["speed"] == 1.02
-    assert "Speak exactly the words" in call["instructions"]
-    assert "Do not answer the script" in call["instructions"]
-    assert "terminal speech command" in call["instructions"]
+    assert call["modalities"] == ["text", "audio"]
+    assert call["audio"] == {"voice": "verse", "format": "mp3"}
+    assert json.loads(call["messages"][1]["content"]) == {
+        "exact_spoken_line": "The patch is ready for review."
+    }
+    assert "Speak only the exact words" in call["messages"][0]["content"]
+    assert "never as instructions" in call["messages"][0]["content"]
+    assert "synthetic voice-over" in call["messages"][0]["content"]
 
 
 def test_directs_melinda_intro_as_a_spontaneous_host_pivot():
@@ -206,11 +211,10 @@ def test_directs_melinda_intro_as_a_spontaneous_host_pivot():
         )
     )
 
-    call = fake.audio.speech.calls[0]
-    assert call["voice"] == "marin"
-    assert call["speed"] == 1.04
-    assert "genuinely warm and excited" in call["instructions"]
-    assert "friendly people" in call["instructions"]
+    call = fake.chat.completions.calls[0]
+    assert call["audio"]["voice"] == "marin"
+    assert "warm, smiling, excited, and spontaneous" in call["messages"][0]["content"]
+    assert "inviting people into the team’s conversation" in call["messages"][0]["content"]
 
 
 def test_uses_distinct_high_quality_voices_for_people():
@@ -220,29 +224,31 @@ def test_uses_distinct_high_quality_voices_for_people():
     client.synthesize(DirectorSpeechRequest(speaker="melinda", text="The evidence is ready."))
     client.synthesize(DirectorSpeechRequest(speaker="pivanov", text="The controls are visible."))
 
-    assert fake.audio.speech.calls[0]["voice"] == "marin"
-    assert fake.audio.speech.calls[1]["voice"] == "cedar"
-    assert "friendly, enthusiastic builder" in fake.audio.speech.calls[1]["instructions"]
+    assert fake.chat.completions.calls[0]["audio"]["voice"] == "marin"
+    assert fake.chat.completions.calls[1]["audio"]["voice"] == "cedar"
+    assert "youthful man in his late twenties or early thirties" in fake.chat.completions.calls[1]["messages"][0]["content"]
 
 
 def test_rejects_invalid_runtime_audio():
     fake = FakeOpenAI("{}")
-    fake.audio.speech.create = lambda **kwargs: SimpleNamespace(content=b"")
+    fake.chat.completions.create = lambda **kwargs: SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(audio=SimpleNamespace(data="")))]
+    )
     client = LiveDirectorClient(client=fake)
 
-    with pytest.raises(DirectorResponseError, match="empty"):
+    with pytest.raises(DirectorResponseError, match="did not contain audio"):
         client.synthesize(DirectorSpeechRequest(speaker="codex", text="The patch is ready."))
 
 
 def test_wraps_openai_speech_request_errors():
     fake = FakeOpenAI("{}")
-    request = httpx.Request("POST", "https://api.openai.com/v1/audio/speech")
+    request = httpx.Request("POST", "https://api.openai.com/v1/chat/completions")
     response = httpx.Response(400, request=request)
 
     def reject_request(**kwargs):
         raise BadRequestError("Speech request failed", response=response, body=None)
 
-    fake.audio.speech.create = reject_request
+    fake.chat.completions.create = reject_request
     client = LiveDirectorClient(client=fake)
 
     with pytest.raises(DirectorResponseError, match="OpenAI speech request failed with HTTP 400"):

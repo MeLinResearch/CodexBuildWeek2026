@@ -299,8 +299,8 @@ class LiveDirectorClient:
         if len(turn.lines) > request.max_lines:
             raise DirectorResponseError("Director returned too many narration lines")
         required_choreography = {
-            "requirements": ["pivanov", "codex"],
-            "failures": ["melinda", "codex"],
+            "requirements": ["pivanov"],
+            "failures": ["melinda", "pivanov"],
             "traceability": ["pivanov", "codex"],
             "review": ["pivanov", "codex", "melinda"],
             "approval": ["melinda", "melinda"],

@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
@@ -17,6 +18,39 @@ CODEX_INSTRUCTION = "You are the read-only Codex patch proposal boundary for Rel
 
 class CodexExecutionError(RuntimeError):
     pass
+
+
+def _quote_windows_command_argument(value: str) -> str:
+    return f'"{value.replace("%", "%%").replace(chr(34), chr(34) * 2)}"'
+
+
+def _build_codex_command(
+    executable: str,
+    arguments: list[str],
+    *,
+    platform: str = os.name,
+    comspec: str | None = None,
+) -> list[str]:
+    if platform != "nt":
+        return [executable, *arguments]
+
+    resolved_executable = shutil.which(executable) or executable
+    if Path(resolved_executable).suffix.lower() not in {".bat", ".cmd"}:
+        return [resolved_executable, *arguments]
+
+    command_line = '"{}"'.format(
+        " ".join(
+            _quote_windows_command_argument(argument)
+            for argument in [resolved_executable, *arguments]
+        )
+    )
+    command_processor = (
+        comspec
+        or os.environ.get("ComSpec")
+        or os.environ.get("COMSPEC")
+        or "cmd.exe"
+    )
+    return [command_processor, "/d", "/s", "/c", command_line]
 
 
 class LiveCodexClient:
@@ -48,9 +82,10 @@ class LiveCodexClient:
                    "source_artifact_ids": list(request.source_artifact_ids), "schema_version": request.schema_version,
                    "created_at": request.created_at, "provenance": provenance, "task_context": request.task_context}
         prompt = f"{CODEX_INSTRUCTION}\n{json.dumps(context, separators=(',', ':'))}"
-        command = [self.executable, "-a", "never", "exec", "--ephemeral", "--ignore-user-config",
-                   "--cd", str(request.repo_path), "--sandbox", "read-only", "--color", "never", "--json",
-                   "--output-last-message", str(proposal_path), "-"]
+        arguments = ["-a", "never", "exec", "--ephemeral", "--ignore-user-config",
+                     "--cd", str(request.repo_path), "--sandbox", "read-only", "--color", "never", "--json",
+                     "--output-last-message", str(proposal_path), "-"]
+        command = _build_codex_command(self.executable, arguments)
         try:
             result = self.runner(command, cwd=request.repo_path, input=prompt, text=True,
                                  capture_output=True, timeout=self.timeout, check=False, shell=False)

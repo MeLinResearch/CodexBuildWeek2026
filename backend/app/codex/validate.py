@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import shutil
 import subprocess
 import tempfile
 from pathlib import Path
@@ -29,10 +28,20 @@ def _diff_applies_cleanly(diff: str, allowed_paths: tuple[str, ...], repo_path: 
                 continue
             target = workspace / allowed
             target.parent.mkdir(parents=True, exist_ok=True)
-            shutil.copy2(source, target)
+            target.write_text(
+                source.read_text(encoding="utf-8"),
+                encoding="utf-8",
+                newline="\n",
+            )
         subprocess.run(["git", "init", "--quiet"], cwd=workspace, check=True, capture_output=True)
+        subprocess.run(
+            ["git", "config", "core.autocrlf", "false"],
+            cwd=workspace,
+            check=True,
+            capture_output=True,
+        )
         patch_path = workspace / "proposal.diff"
-        patch_path.write_text(diff, encoding="utf-8")
+        patch_path.write_text(diff, encoding="utf-8", newline="\n")
         # --recount because model-written hunk headers routinely misstate the
         # line counts (Codex drops trailing context but keeps the counts);
         # git infers them from the body instead. Content mismatches still fail.

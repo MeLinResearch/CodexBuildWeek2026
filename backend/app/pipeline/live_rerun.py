@@ -3,7 +3,6 @@ from __future__ import annotations
 import hashlib
 import json
 import os
-import shutil
 import subprocess
 import sys
 import tempfile
@@ -80,11 +79,16 @@ def apply_and_verify_patch(store: Store, patch: PatchRow) -> dict[str, object]:
             workspace = Path(temporary)
             target = workspace / "reconcile/migration.py"
             target.parent.mkdir(parents=True)
-            shutil.copy2(original, target)
+            target.write_text(
+                original.read_text(encoding="utf-8"),
+                encoding="utf-8",
+                newline="\n",
+            )
             _run(["git", "init", "--quiet"], workspace)
+            _run(["git", "config", "core.autocrlf", "false"], workspace)
             pre_tree = _tree(workspace)
             patch_path = workspace / f"{patch.patch_id}.diff"
-            patch_path.write_text(patch.diff, encoding="utf-8")
+            patch_path.write_text(patch.diff, encoding="utf-8", newline="\n")
             _run(["git", "apply", "--recount", "--check", patch_path.name], workspace)
             _run(["git", "apply", "--recount", patch_path.name], workspace)
             post_tree = _tree(workspace)

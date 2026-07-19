@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 import { resolvePythonExecutable, runDevelopment } from './dev';
+import { resolveCommandInvocation } from './executable';
 
 const verifyCommand = async (command: string[]): Promise<boolean> => {
   try {
@@ -26,9 +27,10 @@ const main = async (): Promise<void> => {
     return;
   }
 
-  const codexExecutable = process.env.RELEASE_ASSURANCE_CODEX_EXECUTABLE ?? 'codex';
-  if (!(await verifyCommand([codexExecutable, '--version']))) {
-    console.error(`Codex executable was not found or failed: ${codexExecutable}`);
+  const configuredCodexExecutable = process.env.RELEASE_ASSURANCE_CODEX_EXECUTABLE ?? 'codex';
+  const codexInvocation = resolveCommandInvocation(configuredCodexExecutable, ['--version']);
+  if (!codexInvocation || !(await verifyCommand(codexInvocation.command))) {
+    console.error(`Codex executable was not found or failed: ${configuredCodexExecutable}`);
     process.exitCode = 1;
     return;
   }
@@ -48,6 +50,7 @@ const main = async (): Promise<void> => {
 
   try {
     process.exitCode = await runDevelopment({
+      RELEASE_ASSURANCE_CODEX_EXECUTABLE: codexInvocation.executable,
       RELEASE_ASSURANCE_DB_PATH: join(temporaryDirectory, 'live.sqlite'),
     });
   } finally {

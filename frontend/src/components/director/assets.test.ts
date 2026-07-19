@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { readFile } from 'node:fs/promises';
 
-const INDEX_HTML_URL = new URL('../../index.html', import.meta.url);
+const INDEX_HTML_URL = new URL('../../../index.html', import.meta.url);
 const DIRECTOR_AVATARS = ['avatar-melinda.png', 'avatar-codex.png', 'avatar-pivanov.png'];
 
 describe('demo director avatar loading', () => {
