@@ -4,6 +4,13 @@
 @import "@fontsource-variable/geist";
 @import "@fontsource-variable/geist-mono";
 
+html[data-demo-director='running'],
+html[data-demo-director='running'] *,
+html[data-demo-director='music-tail'],
+html[data-demo-director='music-tail'] * {
+  cursor: none !important;
+}
+
 @custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
 
 @theme inline {

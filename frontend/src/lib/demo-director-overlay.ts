@@ -2,6 +2,8 @@ import codexAvatarUrl from '@/assets/avatar-codex.webp';
 import melindaAvatarUrl from '@/assets/avatar-melinda.png';
 import pivanovAvatarUrl from '@/assets/avatar-pivanov.png';
 import backgroundMusicUrl from '@/assets/background-music-soft-calm-335280.mp3';
+import cursorUrl from '@/assets/cursor.svg';
+import pointingHandUrl from '@/assets/pointinghand.svg';
 import { buildTimedCaptionWords, captionWordIndexAt } from '@/lib/demo-director-captions';
 import { type IDirectorLine, SPEAKER_LABELS, type TDirectorSpeaker } from '@/lib/demo-director-script';
 
@@ -12,6 +14,12 @@ interface IPreparedSpeech {
   line: IDirectorLine;
   audio: HTMLAudioElement;
   objectUrl: string;
+}
+
+interface IPreparedPlaybackOptions {
+  fadeInMs?: number;
+  initialVolume?: number;
+  targetVolume?: number;
 }
 
 const delay = (milliseconds: number): Promise<void> => {
@@ -29,10 +37,15 @@ class DemoDirectorOverlay {
 
   private readonly chat: HTMLDivElement;
   private readonly status: HTMLDivElement;
+  private readonly timer: HTMLTimeElement;
+  private readonly timerValue: HTMLSpanElement;
   private readonly backgroundMusic: HTMLAudioElement;
   private currentAudio: HTMLAudioElement | null = null;
+  private backgroundMusicStopTimer: number | null = null;
   private captionAnimationFrame: number | null = null;
   private activeWordElements: HTMLElement[] = [];
+  private timerInterval: number | null = null;
+  private timerStartedAt = 0;
 
   constructor() {
     this.host = document.createElement('div');
@@ -212,13 +225,53 @@ class DemoDirectorOverlay {
         .status[data-tone="error"] { color: #ff919f; }
         .status[data-tone="error"]::before { background: #ed6476; box-shadow: 0 0 8px rgba(237, 100, 118, .8); }
         @keyframes pulse { to { opacity: .42; } }
+        .timer {
+          position: fixed;
+          right: 18px;
+          bottom: 18px;
+          z-index: 2147483645;
+          display: inline-flex;
+          align-items: center;
+          gap: 9px;
+          min-width: 86px;
+          height: 38px;
+          padding: 0 13px;
+          border: 1px solid rgba(130, 137, 160, .28);
+          border-radius: 8px;
+          background: rgba(9, 11, 17, .9);
+          backdrop-filter: blur(14px);
+          box-shadow: 0 14px 36px rgba(0, 0, 0, .4);
+          color: #f4f5f8;
+          font: 700 13px/1 ui-monospace, SFMono-Regular, Menlo, monospace;
+          font-variant-numeric: tabular-nums;
+          letter-spacing: 0;
+          animation: timer-in .5s cubic-bezier(.16, 1, .3, 1) both;
+        }
+        .timer-dot {
+          width: 7px;
+          height: 7px;
+          flex: none;
+          border-radius: 50%;
+          background: #ed6476;
+          box-shadow: 0 0 10px rgba(237, 100, 118, .75);
+        }
+        .timer[data-running="true"] .timer-dot { animation: timer-live 1.2s ease-in-out infinite alternate; }
+        .timer[data-running="false"] .timer-dot {
+          background: #73798b;
+          box-shadow: none;
+        }
+        @keyframes timer-in {
+          from { opacity: 0; transform: translateY(12px) scale(.94); }
+          to { opacity: 1; transform: none; }
+        }
+        @keyframes timer-live { to { opacity: .46; } }
         .cursor {
           position: fixed;
           top: 0;
           left: 0;
           z-index: 2147483646;
-          width: 22px;
-          height: 28px;
+          width: 32px;
+          height: 32px;
           pointer-events: none;
           opacity: 0;
           transform: translate3d(50vw, 50vh, 0);
@@ -226,11 +279,31 @@ class DemoDirectorOverlay {
           filter: drop-shadow(0 3px 4px rgba(0, 0, 0, .72));
         }
         .cursor[data-visible="true"] { opacity: 1; }
-        .cursor svg { display: block; width: 100%; height: 100%; }
+        .cursor-icon {
+          position: absolute;
+          top: 0;
+          left: 0;
+          display: block;
+          user-select: none;
+          transition: opacity .08s ease;
+        }
+        .cursor-arrow {
+          width: 28px;
+          height: 28px;
+          transform: translate(-8px, -5px);
+        }
+        .cursor-hand {
+          width: 32px;
+          height: 32px;
+          opacity: 0;
+          transform: translate(-13px, -8px);
+        }
+        .cursor[data-pointing="true"] .cursor-arrow { opacity: 0; }
+        .cursor[data-pointing="true"] .cursor-hand { opacity: 1; }
         .cursor-ring {
           position: absolute;
-          top: 3px;
-          left: 1px;
+          top: -14px;
+          left: -14px;
           width: 28px;
           height: 28px;
           border: 2px solid rgba(139, 128, 255, .75);
@@ -242,6 +315,10 @@ class DemoDirectorOverlay {
         @keyframes click-ring {
           0% { opacity: .9; transform: scale(.35); }
           100% { opacity: 0; transform: scale(1.45); }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .timer { animation: none; }
+          .timer-dot { animation: none !important; }
         }
       </style>
       <div class="panel">
@@ -267,26 +344,36 @@ class DemoDirectorOverlay {
         </div>
         <div class="chat"></div>
       </div>
+      <time class="timer" data-running="true" datetime="PT0S" aria-hidden="true">
+        <span class="timer-dot"></span>
+        <span class="timer-value">00:00</span>
+      </time>
       <div class="cursor" aria-hidden="true">
         <span class="cursor-ring"></span>
-        <svg viewBox="0 0 24 30" fill="none">
-          <path d="M2.2 1.8 20.4 18l-8.2 1.2-4.1 7.3L2.2 1.8Z" fill="#fff" stroke="#0b0d13" stroke-width="1.8" stroke-linejoin="round"/>
-        </svg>
+        <img class="cursor-icon cursor-arrow" src="${cursorUrl}" alt="" draggable="false" />
+        <img class="cursor-icon cursor-hand" src="${pointingHandUrl}" alt="" draggable="false" />
       </div>
     `;
     document.body.append(this.host);
 
     const chat = this.shadow.querySelector<HTMLDivElement>('.chat');
     const status = this.shadow.querySelector<HTMLDivElement>('.status');
+    const timer = this.shadow.querySelector<HTMLTimeElement>('.timer');
+    const timerValue = this.shadow.querySelector<HTMLSpanElement>('.timer-value');
     const cursor = this.shadow.querySelector<HTMLDivElement>('.cursor');
 
-    if (!chat || !status || !cursor) {
+    if (!chat || !status || !timer || !timerValue || !cursor) {
       throw new Error('Demo director overlay did not initialize');
     }
 
     this.chat = chat;
     this.status = status;
+    this.timer = timer;
+    this.timerValue = timerValue;
     this.cursor = cursor;
+    this.timerStartedAt = performance.now();
+    this.updateTimer();
+    this.timerInterval = window.setInterval(this.updateTimer, 250);
     this.backgroundMusic = new Audio(backgroundMusicUrl);
     this.backgroundMusic.loop = true;
     this.backgroundMusic.preload = 'auto';
@@ -328,7 +415,11 @@ class DemoDirectorOverlay {
     this.setStatus('Following UI');
   }
 
-  async playPrepared(prepared: IPreparedSpeech, onPlaybackStarted?: () => void | Promise<void>): Promise<void> {
+  async playPrepared(
+    prepared: IPreparedSpeech,
+    onPlaybackStarted?: () => void | Promise<void>,
+    options: IPreparedPlaybackOptions = {},
+  ): Promise<void> {
     const { line, audio, objectUrl } = prepared;
     this.currentAudio = audio;
 
@@ -340,13 +431,15 @@ class DemoDirectorOverlay {
 
       this.startCaptionSync(line.speaker, line.text, audio);
       this.setStatus('Speaking');
+      audio.volume = options.initialVolume ?? (options.fadeInMs ? 0 : 1);
       await audio.play();
 
       const finishPlayback = playbackEnded.then(() => {
         this.finishCaptionSync(line.speaker);
         this.setStatus('Following UI');
       });
-      await Promise.all([finishPlayback, Promise.resolve(onPlaybackStarted?.())]);
+      const fadeIn = options.fadeInMs ? this.fadeAudioVolume(audio, options.targetVolume ?? 1, options.fadeInMs) : Promise.resolve();
+      await Promise.all([finishPlayback, fadeIn, Promise.resolve(onPlaybackStarted?.())]);
     } finally {
       this.stopCaptionSync();
       if (!audio.ended) {
@@ -362,6 +455,7 @@ class DemoDirectorOverlay {
     const x = Math.round(bounds.left + Math.min(bounds.width * 0.62, bounds.width - 8));
     const y = Math.round(bounds.top + Math.min(bounds.height * 0.55, bounds.height - 6));
 
+    this.cursor.dataset.pointing = 'false';
     this.cursor.dataset.visible = 'true';
     this.cursor.style.transform = `translate3d(${x}px, ${y}px, 0)`;
     await delay(760);
@@ -370,26 +464,78 @@ class DemoDirectorOverlay {
       return;
     }
 
+    this.cursor.dataset.pointing = 'true';
+    await delay(90);
     this.cursor.dataset.clicking = 'true';
     element.click();
     await delay(420);
     this.cursor.dataset.clicking = 'false';
+    this.cursor.dataset.pointing = 'false';
   }
 
   hideCursor(): void {
     this.cursor.dataset.visible = 'false';
+    this.cursor.dataset.pointing = 'false';
   }
 
   stopAudio(): void {
+    if (this.backgroundMusicStopTimer !== null) {
+      window.clearTimeout(this.backgroundMusicStopTimer);
+      this.backgroundMusicStopTimer = null;
+    }
+
+    this.stopCurrentSpeech();
+    this.stopBackgroundMusic();
+  }
+
+  finishWithMusicTail(durationMs: number, onFinished?: () => void): void {
+    this.stopCurrentSpeech();
+
+    if (this.backgroundMusicStopTimer !== null) {
+      window.clearTimeout(this.backgroundMusicStopTimer);
+    }
+
+    this.backgroundMusicStopTimer = window.setTimeout(() => {
+      this.backgroundMusicStopTimer = null;
+      void this.fadeAudioVolume(this.backgroundMusic, 0, 1_200).finally(() => {
+        this.stopBackgroundMusic();
+        onFinished?.();
+      });
+    }, durationMs);
+  }
+
+  private stopCurrentSpeech(): void {
     this.stopCaptionSync();
     if (this.currentAudio) {
       this.currentAudio.pause();
       this.currentAudio = null;
     }
+  }
 
+  private stopBackgroundMusic(): void {
     this.backgroundMusic.pause();
     this.backgroundMusic.currentTime = 0;
+    this.backgroundMusic.volume = BACKGROUND_MUSIC_VOLUME;
   }
+
+  stopTimer(): void {
+    this.updateTimer();
+
+    if (this.timerInterval !== null) {
+      window.clearInterval(this.timerInterval);
+      this.timerInterval = null;
+    }
+
+    this.timer.dataset.running = 'false';
+  }
+
+  private readonly updateTimer = (): void => {
+    const elapsedSeconds = Math.max(0, Math.floor((performance.now() - this.timerStartedAt) / 1_000));
+    const minutes = Math.floor(elapsedSeconds / 60);
+    const seconds = elapsedSeconds % 60;
+    this.timerValue.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    this.timer.dateTime = `PT${elapsedSeconds}S`;
+  };
 
   private appendMessage(speaker: TDirectorSpeaker | null, kind: 'line' | 'system'): HTMLDivElement {
     const message = document.createElement('div');
@@ -494,6 +640,32 @@ class DemoDirectorOverlay {
     });
   }
 
+  private fadeAudioVolume(audio: HTMLAudioElement, targetVolume: number, durationMs: number): Promise<void> {
+    const initialVolume = audio.volume;
+    const startedAt = performance.now();
+
+    return new Promise((resolve) => {
+      const update = (): void => {
+        if (audio.ended || audio.paused) {
+          resolve();
+          return;
+        }
+
+        const progress = Math.min(1, (performance.now() - startedAt) / durationMs);
+        audio.volume = initialVolume + (targetVolume - initialVolume) * progress;
+
+        if (progress >= 1) {
+          resolve();
+          return;
+        }
+
+        window.requestAnimationFrame(update);
+      };
+
+      update();
+    });
+  }
+
   private startCaptionSync(speaker: TDirectorSpeaker, text: string, audio: HTMLAudioElement): void {
     this.stopCaptionSync();
     this.setSpeakerActivity(speaker, true);
@@ -548,5 +720,5 @@ class DemoDirectorOverlay {
   }
 }
 
-export type { IPreparedSpeech };
+export type { IPreparedPlaybackOptions, IPreparedSpeech };
 export { DemoDirectorOverlay, delay };

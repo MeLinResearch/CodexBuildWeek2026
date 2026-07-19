@@ -1,23 +1,36 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-
 from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
 DirectorSpeaker = Literal["melinda", "codex", "pivanov"]
+DirectorSpeechDelivery = Literal[
+    "default",
+    "intro_banter_question",
+    "intro_codex_quip",
+    "intro_on_air_pivot",
+    "intro_host_welcome",
+    "intro_launch",
+    "review_request",
+    "review_codex_tease",
+    "review_melinda_reply",
+    "approval_decision",
+    "approval_note",
+]
 DirectorPhase = Literal[
-    "intro",
     "live_wait",
     "requirements",
     "failures",
     "traceability",
     "patch",
+    "review",
     "approval",
     "evidence",
     "close",
 ]
+
 
 @dataclass(frozen=True)
 class DirectorSpeech:
@@ -25,15 +38,15 @@ class DirectorSpeech:
 
 
 ALLOWED_SPEAKERS: dict[DirectorPhase, frozenset[DirectorSpeaker]] = {
-    "intro": frozenset({"melinda", "pivanov", "codex"}),
     "live_wait": frozenset({"melinda", "pivanov"}),
-    "requirements": frozenset({"pivanov"}),
-    "failures": frozenset({"melinda", "pivanov"}),
-    "traceability": frozenset({"melinda", "pivanov"}),
+    "requirements": frozenset({"codex", "pivanov"}),
+    "failures": frozenset({"codex", "melinda"}),
+    "traceability": frozenset({"codex", "pivanov"}),
     "patch": frozenset({"codex"}),
-    "approval": frozenset({"pivanov"}),
-    "evidence": frozenset({"melinda", "pivanov", "codex"}),
-    "close": frozenset({"melinda", "pivanov", "codex"}),
+    "review": frozenset({"codex", "melinda", "pivanov"}),
+    "approval": frozenset({"melinda"}),
+    "evidence": frozenset({"codex", "melinda"}),
+    "close": frozenset({"codex", "melinda"}),
 }
 
 
@@ -78,8 +91,10 @@ class DirectorLine(BaseModel):
     @classmethod
     def validate_text(cls, value: str) -> str:
         cleaned = _clean_bounded_text(value, field_name="narration", maximum_characters=280)
-        if len(cleaned.split()) > 45:
-            raise ValueError("narration must not exceed 45 words")
+        if len(cleaned.split()) > 24:
+            raise ValueError("narration must not exceed 24 words")
+        if any(punctuation in cleaned for punctuation in (";", "(", ")", "[", "]", "{", "}")):
+            raise ValueError("narration contains punctuation unsuitable for live speech")
         if cleaned[-1] not in ".!?":
             raise ValueError("narration must be a complete sentence")
         return cleaned
@@ -92,6 +107,7 @@ class DirectorTurn(BaseModel):
 class DirectorSpeechRequest(BaseModel):
     speaker: DirectorSpeaker
     text: str
+    delivery: DirectorSpeechDelivery = "default"
 
     @field_validator("text")
     @classmethod

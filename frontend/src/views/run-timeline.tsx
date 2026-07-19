@@ -18,7 +18,7 @@ import { Button } from '@/components/ui/button';
 import type { IDemo } from '@/lib/demos';
 import { mapFailuresToFiles, parsePatchFiles } from '@/lib/diff-hunks';
 import { useRunStateSync } from '@/lib/use-run-state-sync';
-import { type IStepTiming, useTimelineSequence } from '@/lib/use-timeline-sequence';
+import { directorTimelineIsControlled, type IStepTiming, useTimelineSequence } from '@/lib/use-timeline-sequence';
 import { cn } from '@/lib/utils';
 import { type TReplayState, useRunUi } from '@/state/run-store';
 
@@ -53,7 +53,8 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   useRunStateSync(demo.runId);
 
   const [hoveredFailureId, setHoveredFailureId] = useState<string | null>(null);
-  const { statusFor, finished } = useTimelineSequence(STEP_TIMINGS, !!shouldReduceMotion);
+  const directorControlled = directorTimelineIsControlled();
+  const { statusFor, finished } = useTimelineSequence(STEP_TIMINGS, !!shouldReduceMotion, directorControlled);
 
   const refEnd = useRef<HTMLDivElement>(null);
   const refFollowing = useRef(true);
@@ -159,12 +160,12 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
 
     steps.push({ id: 'decision', title: 'Waiting for your decision', revealed: finished });
 
-    if (approval) {
+    if (approval?.status === 'approved' && runStatus.state === 'EVIDENCE_READY') {
       steps.push({ id: 'evidence', title: 'Evidence and artifacts', revealed: true });
     }
 
     return steps;
-  }, [statusFor, finished, approval]);
+  }, [statusFor, finished, approval, runStatus.state]);
 
   const requirementIds = useMemo(() => matrix.map((row) => row.requirement_id), [matrix]);
   const testRows = useMemo(() => {
@@ -184,6 +185,25 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
 
   return (
     <div className="mx-auto w-full max-w-[880px] pb-10">
+      {directorControlled && (
+        <div hidden aria-hidden="true">
+          <span id="director-observation-requirements">
+            {requirementIds.length} schema-validated requirements: {requirementIds.join(', ')}.
+          </span>
+          <span id="director-observation-failures">
+            {testRows.length} deterministic tests completed; {failedTestCount} failed. Tests: {testRows.map((row) => row.testId).join(', ')}.
+          </span>
+          <span id="director-observation-traceability">
+            {matrix.length} traceability rows connect requirements, tests, failures, and patch {patch.patch_id}.
+          </span>
+          <span id="director-observation-patch">
+            {patch.patch_id} was proposed by Codex for failures {patch.failure_ids.join(', ')} and is pending human review.
+          </span>
+          <span id="director-observation-approval">
+            Melinda is the named reviewer and must choose Approve or Reject after reviewing the complete diff.
+          </span>
+        </div>
+      )}
       <StepMinimap steps={minimapSteps} refScroll={refScroll} />
       <div className="mb-6">
         <div className="eyebrow flex items-center gap-1.5">
@@ -300,7 +320,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
         )}
       </AnimatePresence>
 
-      {!!approval && (
+      {approval?.status === 'approved' && runStatus.state === 'EVIDENCE_READY' && (
         <AgentStep id="step-evidence" title="Evidence and artifacts" activity="Everything on this page, downloadable and auditable" status="done">
           <DownloadsBlock demo={demo} patch={patch} />
         </AgentStep>

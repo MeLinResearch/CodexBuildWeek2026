@@ -41,7 +41,11 @@ def test_director_speech_endpoint_returns_runtime_audio(monkeypatch):
 
     response = client.post(
         "/api/director/speech",
-        json={"speaker": "melinda", "text": "The evidence pack is ready."},
+        json={
+            "speaker": "melinda",
+            "text": "The evidence pack is ready.",
+            "delivery": "intro_host_welcome",
+        },
     )
 
     assert response.status_code == 200
@@ -77,8 +81,8 @@ def test_director_reports_missing_configuration(monkeypatch):
     response = client.post(
         "/api/director/turn",
         json={
-            "phase": "intro",
-            "observations": ["Start page ready."],
+            "phase": "patch",
+            "observations": ["Read-only patch ready."],
             "remaining_seconds": 175,
             "max_lines": 1,
         },

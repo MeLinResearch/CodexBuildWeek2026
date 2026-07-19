@@ -25,7 +25,7 @@ interface IFileHeaderProps {
 
 const FileHeader = ({ file, failureIds, hoveredFailureId, onHoverFailure, onOpenFailure }: IFileHeaderProps) => {
   return (
-    <div className="flex items-center gap-2.5 border-b bg-card px-3.5 py-2">
+    <div data-director-target="diff-file-header" className="flex items-center gap-2.5 border-b bg-card px-3.5 py-2">
       <span className="font-mono text-xs font-semibold">{file.path}</span>
       <span className="font-mono text-2xs">
         <span className="font-semibold text-success">+{file.additions}</span>{' '}
@@ -36,6 +36,7 @@ const FileHeader = ({ file, failureIds, hoveredFailureId, onHoverFailure, onOpen
           <button
             key={failureId}
             type="button"
+            data-director-target="diff-failure"
             onClick={() => onOpenFailure(failureId)}
             onMouseEnter={() => onHoverFailure(failureId)}
             onMouseLeave={() => onHoverFailure(null)}
@@ -68,7 +69,7 @@ const DiffViewer = ({ patch, failureIds, hoveredFailureId, onHoverFailure }: IDi
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div data-director-target="diff-viewer" className="overflow-hidden rounded-lg border bg-card">
       <div className="flex items-center gap-2 border-b px-3.5 py-2">
         <span className="eyebrow">Files changed · {files.length}</span>
         <span className="ml-auto flex overflow-hidden rounded-md border text-3xs font-semibold">
@@ -93,6 +94,7 @@ const DiffViewer = ({ patch, failureIds, hoveredFailureId, onHoverFailure }: IDi
           <div
             key={section.path}
             id={`diff-file-${section.path}`}
+            data-director-target="diff-file"
             className={cn('transition-shadow', highlighted && 'shadow-[inset_0_0_0_2px_var(--destructive)]')}
           >
             <FileHeader

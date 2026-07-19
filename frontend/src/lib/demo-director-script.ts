@@ -1,9 +1,22 @@
 type TDirectorSpeaker = 'melinda' | 'codex' | 'pivanov';
-type TDirectorPhase = 'intro' | 'live_wait' | 'requirements' | 'failures' | 'traceability' | 'patch' | 'approval' | 'evidence' | 'close';
+type TDirectorPhase = 'intro' | 'live_wait' | 'requirements' | 'failures' | 'traceability' | 'patch' | 'review' | 'approval' | 'evidence' | 'close';
+type TDirectorDelivery =
+  | 'default'
+  | 'intro_banter_question'
+  | 'intro_codex_quip'
+  | 'intro_on_air_pivot'
+  | 'intro_host_welcome'
+  | 'intro_launch'
+  | 'review_request'
+  | 'review_codex_tease'
+  | 'review_melinda_reply'
+  | 'approval_decision'
+  | 'approval_note';
 
 interface IDirectorLine {
   speaker: TDirectorSpeaker;
   text: string;
+  delivery?: TDirectorDelivery;
 }
 
 interface IDirectorTurn {
@@ -12,33 +25,92 @@ interface IDirectorTurn {
 
 const DIRECTOR_APPROVAL_NOTE = 'Reviewed the complete diff; approved for deterministic verification in the disposable workspace.';
 
+const INTRO_LINES: readonly IDirectorLine[] = [
+  {
+    speaker: 'pivanov',
+    text: 'Wait—the migration said success, but the balance was wrong?',
+    delivery: 'intro_banter_question',
+  },
+  {
+    speaker: 'codex',
+    text: 'That’s a very confident definition of success.',
+    delivery: 'intro_codex_quip',
+  },
+  {
+    speaker: 'melinda',
+    text: 'Exactly—and nobody knew. Oh—we’re live!',
+    delivery: 'intro_on_air_pivot',
+  },
+  {
+    speaker: 'melinda',
+    text: 'Hey, everyone! I’m Melinda—welcome to Release Assurance, our OpenAI Build Week project for catching silent migration defects.',
+    delivery: 'intro_host_welcome',
+  },
+  {
+    speaker: 'codex',
+    text: 'I’m Codex—the third teammate. Let’s run the real pipeline and find out whether success is actually true.',
+    delivery: 'intro_launch',
+  },
+];
+
 const SPEAKER_LABELS: Record<TDirectorSpeaker, string> = {
   melinda: 'Melinda',
   codex: 'Codex · AI voice',
   pivanov: 'Pavel',
 };
 
-/* These lines are used only if live narration generation fails. They preserve
- * factual continuity without pretending that the model returned a turn. */
+/* The intro is deliberately authored for a stable cold open. The remaining
+ * lines are concise fallbacks used only if live narration generation fails. */
 const FALLBACK_LINES: Record<TDirectorPhase, readonly IDirectorLine[]> = {
-  intro: [
-    {
-      speaker: 'melinda',
-      text: 'Hey everyone, welcome! I am Melinda, here with Pavel and our AI teammate Codex, and this is Release Assurance, our OpenAI Build Week project.',
-    },
+  intro: INTRO_LINES,
+  live_wait: [{ speaker: 'pivanov', text: 'The director is waiting for the real GPT five point six and Codex result.' }],
+  requirements: [
+    { speaker: 'pivanov', text: 'GPT five point six extracted the explicit controls, and the manifest passed schema validation.' },
+    { speaker: 'codex', text: 'Behind the scenes, I connected those controls to the deterministic test scaffold.' },
+  ],
+  failures: [
+    { speaker: 'melinda', text: 'Deterministic checks found three blocking defects in the canonical synthetic records.' },
+    { speaker: 'codex', text: 'I analyzed each failure with its requirement and record context before proposing a change.' },
+  ],
+  traceability: [
+    { speaker: 'pivanov', text: 'Each failed record maps back to its exact test and original requirement.' },
+    { speaker: 'codex', text: 'I kept that reasoning chain intact, from requirement through failure to candidate fix.' },
+  ],
+  patch: [{ speaker: 'codex', text: 'I prepared a read-only patch proposal for human review.' }],
+  review: [
     {
       speaker: 'pivanov',
-      text: 'Today we run a real bank migration check live: GPT five point six reads the spec, Codex proposes the fix, and a human approves.',
+      text: 'Melinda, can you check the complete diff before we continue?',
+      delivery: 'review_request',
+    },
+    {
+      speaker: 'codex',
+      text: 'I’m still here, Melinda… I told you it works!',
+      delivery: 'review_codex_tease',
+    },
+    {
+      speaker: 'melinda',
+      text: 'Nice try, Codex—but I’ll double-check it.',
+      delivery: 'review_melinda_reply',
     },
   ],
-  live_wait: [{ speaker: 'pivanov', text: 'The director is waiting for the real GPT five point six and Codex result.' }],
-  requirements: [{ speaker: 'pivanov', text: 'GPT five point six extracted the explicit controls, and the manifest passed schema validation.' }],
-  failures: [{ speaker: 'melinda', text: 'Deterministic checks found three blocking defects in the canonical synthetic records.' }],
-  traceability: [{ speaker: 'pivanov', text: 'Each failed record maps back to its exact test and original requirement.' }],
-  patch: [{ speaker: 'codex', text: 'I prepared a read-only patch proposal for human review.' }],
-  approval: [{ speaker: 'pivanov', text: 'Codex proposes; a named human reviews and approves before verification.' }],
-  evidence: [{ speaker: 'melinda', text: 'The approved rerun passed, and its evidence pack is ready.' }],
-  close: [{ speaker: 'pivanov', text: 'Two people, one week, Codex as the third teammate.' }],
+  approval: [
+    {
+      speaker: 'melinda',
+      text: 'I’ve double-checked the complete diff. The patch looks good—so I’ll approve it.',
+      delivery: 'approval_decision',
+    },
+    {
+      speaker: 'melinda',
+      text: 'I’ll add a clear review note now, so the decision is recorded.',
+      delivery: 'approval_note',
+    },
+  ],
+  evidence: [
+    { speaker: 'melinda', text: 'The approved rerun passed, and its evidence pack is ready.' },
+    { speaker: 'codex', text: 'My proposed change passed verification, with its diff, decision, and provenance recorded.' },
+  ],
+  close: [{ speaker: 'melinda', text: 'Two people, one week, Codex as the third teammate.' }],
 };
 
 const isDirectorSpaceKey = (event: {
@@ -79,4 +151,4 @@ const isDirectorTurn = (value: unknown): value is IDirectorTurn => {
 };
 
 export type { IDirectorLine, IDirectorTurn, TDirectorPhase, TDirectorSpeaker };
-export { DIRECTOR_APPROVAL_NOTE, FALLBACK_LINES, isDirectorSpaceKey, isDirectorTurn, SPEAKER_LABELS };
+export { DIRECTOR_APPROVAL_NOTE, FALLBACK_LINES, INTRO_LINES, isDirectorSpaceKey, isDirectorTurn, SPEAKER_LABELS };

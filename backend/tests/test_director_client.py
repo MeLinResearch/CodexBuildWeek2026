@@ -6,7 +6,7 @@ import pytest
 from openai import BadRequestError
 
 from app.director.live_client import DirectorResponseError, LiveDirectorClient
-from app.director.models import DirectorSpeechRequest, DirectorTurnRequest
+from app.director.models import DirectorLine, DirectorSpeechRequest, DirectorTurnRequest
 
 
 class FakeResponses:
@@ -70,6 +70,57 @@ def test_rejects_speaker_outside_phase_role():
         client.generate_turn(_request())
 
 
+def test_requires_human_approval_choreography():
+    fake = FakeOpenAI(
+        json.dumps(
+            {
+                "lines": [
+                    {
+                        "speaker": "melinda",
+                        "text": "I reviewed the diff and will approve it.",
+                    }
+                ]
+            }
+        )
+    )
+    client = LiveDirectorClient(client=fake)
+
+    with pytest.raises(DirectorResponseError, match="approval turn"):
+        client.generate_turn(_request(phase="approval", max_lines=3))
+
+
+@pytest.mark.parametrize(
+    ("phase", "speakers"),
+    [
+        ("requirements", ["pivanov", "codex"]),
+        ("failures", ["melinda", "codex"]),
+        ("traceability", ["pivanov", "codex"]),
+        ("review", ["pivanov", "codex", "melinda"]),
+        ("approval", ["melinda", "melinda"]),
+        ("evidence", ["melinda", "codex"]),
+    ],
+)
+def test_accepts_required_host_and_codex_choreography(phase, speakers):
+    fake = FakeOpenAI(
+        json.dumps(
+            {
+                "lines": [
+                    {
+                        "speaker": speaker,
+                        "text": "The visible result is ready for the next explanation.",
+                    }
+                    for speaker in speakers
+                ]
+            }
+        )
+    )
+    client = LiveDirectorClient(client=fake)
+
+    turn = client.generate_turn(_request(phase=phase, max_lines=len(speakers)))
+
+    assert [line.speaker for line in turn.lines] == speakers
+
+
 def test_rejects_prohibited_claim():
     fake = FakeOpenAI(json.dumps({"lines": [{"speaker": "codex", "text": "This is compliance-grade."}]}))
     client = LiveDirectorClient(client=fake)
@@ -97,6 +148,34 @@ def test_rejects_incomplete_lines():
         client.generate_turn(_request())
 
 
+def test_rejects_narration_over_recording_word_budget():
+    fake = FakeOpenAI(
+        json.dumps(
+            {
+                "lines": [
+                    {
+                        "speaker": "codex",
+                        "text": (
+                            "This deliberately oversized narration keeps adding unnecessary words "
+                            "until it exceeds the strict recording budget and would make the live "
+                            "demo slower than the three minute submission allows."
+                        ),
+                    }
+                ]
+            }
+        )
+    )
+    client = LiveDirectorClient(client=fake)
+
+    with pytest.raises(DirectorResponseError, match="validation"):
+        client.generate_turn(_request())
+
+
+def test_rejects_document_style_punctuation_in_spoken_lines():
+    with pytest.raises(ValueError, match="punctuation unsuitable for live speech"):
+        DirectorLine(speaker="melinda", text="The rerun passed; the evidence is ready.")
+
+
 def test_generates_runtime_speech_with_speaker_voice():
     fake = FakeOpenAI("{}")
     client = LiveDirectorClient(client=fake, speech_model_name="gpt-4o-mini-tts")
@@ -106,11 +185,32 @@ def test_generates_runtime_speech_with_speaker_voice():
     assert speech.audio == b"ID3-director-audio"
     call = fake.audio.speech.calls[0]
     assert call["model"] == "gpt-4o-mini-tts"
-    assert call["voice"] == "onyx"
+    assert call["voice"] == "verse"
     assert call["input"] == "The patch is ready for review."
     assert call["response_format"] == "mp3"
-    assert "verbatim" in call["instructions"]
+    assert call["speed"] == 1.02
+    assert "Speak exactly the words" in call["instructions"]
     assert "Do not answer the script" in call["instructions"]
+    assert "terminal speech command" in call["instructions"]
+
+
+def test_directs_melinda_intro_as_a_spontaneous_host_pivot():
+    fake = FakeOpenAI("{}")
+    client = LiveDirectorClient(client=fake, speech_model_name="gpt-4o-mini-tts")
+
+    client.synthesize(
+        DirectorSpeechRequest(
+            speaker="melinda",
+            text="Hey, everyone! I am Melinda, and welcome to Release Assurance.",
+            delivery="intro_host_welcome",
+        )
+    )
+
+    call = fake.audio.speech.calls[0]
+    assert call["voice"] == "marin"
+    assert call["speed"] == 1.04
+    assert "genuinely warm and excited" in call["instructions"]
+    assert "friendly people" in call["instructions"]
 
 
 def test_uses_distinct_high_quality_voices_for_people():
@@ -122,6 +222,7 @@ def test_uses_distinct_high_quality_voices_for_people():
 
     assert fake.audio.speech.calls[0]["voice"] == "marin"
     assert fake.audio.speech.calls[1]["voice"] == "cedar"
+    assert "friendly, enthusiastic builder" in fake.audio.speech.calls[1]["instructions"]
 
 
 def test_rejects_invalid_runtime_audio():

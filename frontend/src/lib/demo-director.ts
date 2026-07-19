@@ -1,23 +1,30 @@
-import { DemoDirectorOverlay, delay, type IPreparedSpeech } from '@/lib/demo-director-overlay';
+import { DemoDirectorOverlay, delay, type IPreparedPlaybackOptions, type IPreparedSpeech } from '@/lib/demo-director-overlay';
 import {
   DIRECTOR_APPROVAL_NOTE,
   FALLBACK_LINES,
   type IDirectorLine,
   type IDirectorTurn,
+  INTRO_LINES,
   isDirectorSpaceKey,
   isDirectorTurn,
   type TDirectorPhase,
 } from '@/lib/demo-director-script';
+import { setDirectorTimelinePosition } from '@/lib/use-timeline-sequence';
+import { useRunUi } from '@/state/run-store';
 
 const LIVE_RESULT_BUDGET_MS = 90_000;
+const MUSIC_TAIL_MS = 20_000;
 const RECORDING_BUDGET_MS = 175_000;
 const STEP_TIMEOUT_MS = 45_000;
 
-type TDirectorState = 'idle' | 'running' | 'awaiting-approval' | 'complete' | 'failed';
+type TDirectorState = 'idle' | 'running' | 'complete' | 'failed';
 
 interface IPhasePlaybackHooks {
   before?: () => Promise<void>;
   onFirstPlaybackStarted?: () => void | Promise<void>;
+  onLinePlaybackStarted?: (index: number) => void | Promise<void>;
+  afterLine?: (index: number) => void | Promise<void>;
+  playbackOptions?: (index: number) => IPreparedPlaybackOptions;
 }
 
 /* A line whose audio failed to synthesize still plays as a timed
@@ -26,6 +33,14 @@ interface IPreparedLine {
   line: IDirectorLine;
   speech: IPreparedSpeech | null;
 }
+
+type TGeneratedDirectorPhase = Exclude<TDirectorPhase, 'intro'>;
+type TDirectorDelivery = NonNullable<IDirectorLine['delivery']>;
+
+const PHASE_DELIVERIES: Partial<Record<TGeneratedDirectorPhase, readonly TDirectorDelivery[]>> = {
+  review: ['review_request', 'review_codex_tease', 'review_melinda_reply'],
+  approval: ['approval_decision', 'approval_note'],
+};
 
 declare global {
   interface Window {
@@ -101,6 +116,10 @@ const waitForStep = async (id: string, ready: (step: HTMLElement) => boolean): P
   );
 };
 
+const waitForDirectorObservation = async (id: string): Promise<HTMLElement> => {
+  return waitForValue(() => document.getElementById(id), STEP_TIMEOUT_MS, `The ${id} observation did not become available`);
+};
+
 const setTextareaValue = (textarea: HTMLTextAreaElement, value: string): void => {
   const setter = Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')?.set;
 
@@ -115,7 +134,6 @@ const setTextareaValue = (textarea: HTMLTextAreaElement, value: string): void =>
 class DemoDirector {
   private state: TDirectorState = 'idle';
   private overlay: DemoDirectorOverlay | null = null;
-  private approvalResolver: (() => void) | null = null;
   private liveDeadline = 0;
   private recordingStartedAt = 0;
   private aborted = false;
@@ -139,14 +157,6 @@ class DemoDirector {
       return;
     }
 
-    if (this.state === 'awaiting-approval' && this.approvalResolver) {
-      event.preventDefault();
-      this.approvalResolver();
-      this.approvalResolver = null;
-      this.state = 'running';
-      return;
-    }
-
     if (this.state === 'running') {
       event.preventDefault();
       return;
@@ -165,6 +175,7 @@ class DemoDirector {
     event.preventDefault();
     (document.activeElement as HTMLElement | null)?.blur();
     this.state = 'running';
+    document.documentElement.dataset.demoDirector = 'running';
     this.recordingStartedAt = performance.now();
     this.overlay = new DemoDirectorOverlay();
     void this.run(liveButton);
@@ -176,70 +187,106 @@ class DemoDirector {
     }
 
     try {
-      const intro = await this.requestTurn(
-        'intro',
-        [
-          'The recording just started; open like a podcast episode with greetings and introductions.',
-          'This is the OpenAI Build Week submission recording.',
-          'The Release Assurance start page is ready and the Run Live GPT plus Codex button is available.',
-          'No run has started yet.',
-        ],
-        3,
-      );
-      await this.speakTurn(intro, async () => {
-        await delay(1_400);
-        await this.overlay?.moveCursorTo(liveButton, true);
-        this.liveDeadline = performance.now() + LIVE_RESULT_BUDGET_MS;
+      this.overlay.setStatus('Mixing cold open', 'attention');
+      const intro: IDirectorTurn = { lines: [...INTRO_LINES] };
+      const introPrepared = this.prepareTurn(intro);
+      let waitingPrepared: Promise<IPreparedLine[]> | null = introPrepared.then(() => {
+        return this.requestPreparedTurn(
+          'live_wait',
+          [
+            'This narration will play only after the Run Live button has been clicked.',
+            'At playback time the browser will show the live run as pending.',
+            'GPT-5.6 and Codex will be running, but no result will be visible yet.',
+          ],
+          3,
+        );
+      });
+      await this.queuePhasePlayback(introPrepared, {
+        playbackOptions: (index) => {
+          if (index === 0) {
+            return { fadeInMs: 700, initialVolume: 0.15, targetVolume: 0.45 };
+          }
+          if (index === 1) {
+            return { fadeInMs: 350, initialVolume: 0.45, targetVolume: 0.68 };
+          }
+          if (index === 2) {
+            return { fadeInMs: 300, initialVolume: 0.68, targetVolume: 0.9 };
+          }
+          return {};
+        },
+        onLinePlaybackStarted: async (index) => {
+          if (index !== intro.lines.length - 1) {
+            return;
+          }
+
+          this.overlay?.setStatus('Starting live run', 'attention');
+          await this.overlay?.moveCursorTo(liveButton, true);
+          this.liveDeadline = performance.now() + LIVE_RESULT_BUDGET_MS;
+        },
       });
 
-      if (!this.timelineIsReady()) {
-        const waitingTurn = await this.requestTurn(
-          'live_wait',
-          ['The live button was clicked.', 'The browser still shows the live run as pending.', 'No timeline result is visible yet.'],
-          2,
-        );
-        await this.speakTurn(waitingTurn);
-      }
-
       /* A live run spends thirty to ninety seconds inside one POST;
-       * the director keeps narrating honestly through the whole wait
-       * instead of leaving dead air after two lines. */
+       * each waiting turn is generated and synthesized while the
+       * previous turn is speaking, eliminating model-call silence. */
       while (!this.timelineIsReady() && performance.now() < this.liveDeadline) {
         const elapsedSeconds = Math.max(0, Math.round((performance.now() - this.liveDeadline + LIVE_RESULT_BUDGET_MS) / 1_000));
-        const followUpTurn = await this.requestTurn(
+        const currentPrepared = await (waitingPrepared ??
+          this.requestPreparedTurn(
+            'live_wait',
+            ['The live run is pending.', 'No timeline result is visible yet.', 'The director must not invent model progress.'],
+            2,
+          ));
+        if (this.timelineIsReady()) {
+          void this.releasePreparedTurn(Promise.resolve(currentPrepared));
+          waitingPrepared = null;
+          break;
+        }
+
+        const nextPrepared = this.requestPreparedTurn(
           'live_wait',
           [
             `About ${elapsedSeconds} seconds have passed since the live button was clicked.`,
             'The live run is still pending and the progress panel with the elapsed timer is visible.',
             'The director must not invent model progress.',
           ],
-          1,
+          2,
         );
 
+        await this.playPreparedTurn(Promise.resolve(currentPrepared));
+
         if (this.timelineIsReady()) {
+          void this.releasePreparedTurn(nextPrepared);
+          waitingPrepared = null;
           break;
         }
 
-        await this.speakTurn(followUpTurn);
+        waitingPrepared = nextPrepared;
+      }
 
-        if (!this.timelineIsReady()) {
-          await delay(1_100);
-        }
+      if (waitingPrepared) {
+        void this.releasePreparedTurn(waitingPrepared);
       }
 
       await this.waitForLiveTimeline();
       await this.presentTimeline();
       this.state = 'complete';
-      this.overlay.setStatus('Walkthrough complete');
-      this.overlay.stopAudio();
+      document.documentElement.dataset.demoDirector = 'music-tail';
+      this.overlay.setStatus('Walkthrough complete · music tail');
+      this.overlay.finishWithMusicTail(MUSIC_TAIL_MS, () => {
+        document.documentElement.dataset.demoDirector = 'complete';
+        this.overlay?.setStatus('Walkthrough complete');
+      });
+      this.overlay.stopTimer();
       this.overlay.hideCursor();
     } catch (error) {
       this.state = 'failed';
       this.aborted = true;
+      document.documentElement.dataset.demoDirector = 'failed';
       const message = error instanceof Error ? error.message : 'The live walkthrough stopped unexpectedly';
       this.overlay.setCaption('codex', message, false);
       this.overlay.setStatus('Director stopped', 'error');
       this.overlay.stopAudio();
+      this.overlay.stopTimer();
       this.overlay.hideCursor();
     }
   }
@@ -251,55 +298,85 @@ class DemoDirector {
       return;
     }
 
-    const requirementsStep = waitForStep('step-requirements', (step) => /REQ-\d{3}/.test(normalizedText(step)));
+    setDirectorTimelinePosition(1);
+
     const requirementsPlayed = this.queuePhasePlayback(
       this.queuePhaseGeneration(
         'requirements',
-        async () => [observedText(await requirementsStep), 'The live control manifest is visible and schema validated.'],
-        1,
-      ),
-      { before: async () => scrollToElement(await requirementsStep) },
-    );
-
-    const testsStep = waitForStep('step-tests', (step) => /TEST-\d{3}/.test(normalizedText(step)) && /failed/i.test(normalizedText(step)));
-    const failuresPlayed = this.queuePhasePlayback(
-      this.queuePhaseGeneration(
-        'failures',
-        async () => [observedText(await testsStep), 'The deterministic checks have completed and blocking failures are visible.'],
-        1,
-      ),
-      { before: async () => scrollToElement(await testsStep) },
-    );
-
-    const matrixStep = waitForStep('step-matrix', (step) => step.querySelector('table') !== null);
-    const firstFailedRow = matrixStep.then((step) => {
-      return waitForValue(
-        () => step.querySelector<HTMLElement>('tbody tr[id^="matrix-row-"]'),
-        STEP_TIMEOUT_MS,
-        'No failed traceability row became available',
-      );
-    });
-    const traceabilityPlayed = this.queuePhasePlayback(
-      this.queuePhaseGeneration(
-        'traceability',
-        async () => [observedText(await matrixStep), `The first expandable failed row contains: ${observedText(await firstFailedRow, 400)}`],
-        1,
+        async () => [
+          observedText(await waitForDirectorObservation('director-observation-requirements')),
+          'The live control manifest is schema validated.',
+          'After Pavel reacts to the visible result, Codex briefly explains its behind-the-scenes contribution without claiming GPT-5.6 extraction as its own work.',
+        ],
+        2,
       ),
       {
-        before: async () => scrollToElement(await matrixStep),
-        onFirstPlaybackStarted: async () => {
-          await delay(1_350);
-          await overlay.moveCursorTo(await firstFailedRow, true);
+        before: async () => {
+          setDirectorTimelinePosition(3);
+          const step = await waitForStep('step-requirements', (element) => /REQ-\d{3}/.test(normalizedText(element)));
+          await scrollToElement(step);
         },
       },
     );
 
-    const patchStep = waitForStep('step-patch', (step) => /proposed by Codex/i.test(normalizedText(step)));
+    const failuresPlayed = this.queuePhasePlayback(
+      this.queuePhaseGeneration(
+        'failures',
+        async () => [
+          observedText(await waitForDirectorObservation('director-observation-failures')),
+          'The deterministic checks completed with blocking failures.',
+          'After Melinda reacts to the visible failures, Codex briefly explains how it analyzed the requirement and record context behind them.',
+        ],
+        2,
+      ),
+      {
+        before: async () => {
+          setDirectorTimelinePosition(5);
+          const step = await waitForStep(
+            'step-tests',
+            (element) => /TEST-\d{3}/.test(normalizedText(element)) && /failed/i.test(normalizedText(element)),
+          );
+          await scrollToElement(step);
+        },
+      },
+    );
+
+    let firstFailedRow: HTMLElement | null = null;
+    const traceabilityPlayed = this.queuePhasePlayback(
+      this.queuePhaseGeneration(
+        'traceability',
+        async () => [
+          observedText(await waitForDirectorObservation('director-observation-traceability')),
+          'Each row links a requirement to its deterministic test, failure, and proposed patch.',
+          'After Pavel explains the visible matrix, Codex briefly explains how it preserved the reasoning chain behind the scenes.',
+        ],
+        2,
+      ),
+      {
+        before: async () => {
+          setDirectorTimelinePosition(7);
+          const step = await waitForStep('step-matrix', (element) => element.querySelector('table') !== null);
+          firstFailedRow = await waitForValue(
+            () => step.querySelector<HTMLElement>('tbody tr[id^="matrix-row-"]'),
+            STEP_TIMEOUT_MS,
+            'No failed traceability row became available',
+          );
+          await scrollToElement(step);
+        },
+        onFirstPlaybackStarted: async () => {
+          await delay(1_350);
+          if (firstFailedRow) {
+            await overlay.moveCursorTo(firstFailedRow, true);
+          }
+        },
+      },
+    );
+
     const patchPlayed = this.queuePhasePlayback(
       this.queuePhaseGeneration(
         'patch',
         async () => [
-          observedText(await patchStep),
+          observedText(await waitForDirectorObservation('director-observation-patch')),
           'A complete read-only diff is visible for human review.',
           'On screen the cursor follows the fix link from the failed record straight into the diff, then demonstrates the stacked and split diff views.',
         ],
@@ -310,6 +387,8 @@ class DemoDirector {
          * expanded failure scrolls to the exact diff file and flashes
          * its failure chips, which beats a plain scroll. */
         before: async () => {
+          setDirectorTimelinePosition(9);
+          const patchStep = await waitForStep('step-patch', (step) => /proposed by Codex/i.test(normalizedText(step)));
           const fixLink = findVisibleButton(/^reconcile\//);
 
           if (fixLink) {
@@ -318,53 +397,162 @@ class DemoDirector {
             return;
           }
 
-          await scrollToElement(await patchStep);
-        },
-        /* While Codex talks, show off the diff views. */
-        onFirstPlaybackStarted: async () => {
-          await delay(1_300);
-          const splitButton = findVisibleButton('Split');
-
-          if (!splitButton) {
-            return;
-          }
-
-          await overlay.moveCursorTo(splitButton, true);
-          await delay(1_800);
-          const stackedButton = findVisibleButton('Stacked');
-
-          if (stackedButton) {
-            await overlay.moveCursorTo(stackedButton, true);
-          }
+          await scrollToElement(patchStep);
         },
       },
     );
 
-    const approvalButton = patchStep.then(() => {
-      return waitForValue(() => findVisibleButton('Approve patch'), STEP_TIMEOUT_MS, 'The human approval gate did not become ready');
-    });
-    const approvalPlayed = this.queuePhasePlayback(
+    let reviewDiffFile: HTMLElement | null = null;
+    let reviewFileHeader: HTMLElement | null = null;
+    let reviewFailureChip: HTMLButtonElement | null = null;
+    const reviewPlayed = this.queuePhasePlayback(
       this.queuePhaseGeneration(
-        'approval',
-        async () => {
-          const button = await approvalButton;
-          return [observedText(document.getElementById('step-decision') ?? button), 'The approval action requires a human Space press.'];
-        },
-        1,
+        'review',
+        async () => [
+          observedText(await waitForDirectorObservation('director-observation-patch')),
+          'The complete read-only diff is visible, and the cursor will inspect its file, failure link, and Split and Stacked views.',
+          'Pavel asks Melinda to review it. Codex says exactly: “I’m still here, Melinda… I told you it works!” Melinda answers exactly: “Nice try, Codex—but I’ll double-check it.”',
+        ],
+        3,
       ),
       {
         before: async () => {
-          const button = await approvalButton;
-          await scrollToElement(button, 'end');
-          await overlay.moveCursorTo(button);
+          setDirectorTimelinePosition(9);
+          const patchStep = await waitForStep('step-patch', (step) => step.querySelector('[data-director-target="diff-viewer"]') !== null);
+          reviewDiffFile = patchStep.querySelector<HTMLElement>('[data-director-target="diff-file"]');
+          reviewFileHeader = patchStep.querySelector<HTMLElement>('[data-director-target="diff-file-header"]');
+          reviewFailureChip = patchStep.querySelector<HTMLButtonElement>('[data-director-target="diff-failure"]');
+
+          if (!reviewDiffFile || !reviewFileHeader) {
+            throw new Error('The diff review targets did not become ready');
+          }
+
+          await scrollToElement(reviewDiffFile);
+        },
+        onLinePlaybackStarted: async (index) => {
+          if (index === 0 && reviewFileHeader) {
+            await overlay.moveCursorTo(reviewFileHeader);
+            return;
+          }
+
+          if (index === 1) {
+            const splitButton = findVisibleButton('Split');
+
+            if (splitButton) {
+              await overlay.moveCursorTo(splitButton, true);
+              await delay(650);
+            }
+
+            if (reviewFailureChip) {
+              reviewFailureChip.focus({ preventScroll: true });
+              await overlay.moveCursorTo(reviewFailureChip);
+              await delay(500);
+            }
+
+            const stackedButton = findVisibleButton('Stacked');
+            if (stackedButton) {
+              await overlay.moveCursorTo(stackedButton, true);
+            }
+            return;
+          }
+
+          if (index === 2 && reviewDiffFile) {
+            reviewFailureChip?.blur();
+            await scrollToElement(reviewDiffFile);
+            await overlay.moveCursorTo(reviewDiffFile);
+          }
         },
       },
     );
 
-    await Promise.all([requirementsPlayed, failuresPlayed, traceabilityPlayed, patchPlayed, approvalPlayed]);
+    let approvalButton: HTMLButtonElement | null = null;
+    let approvalDialog: HTMLElement | null = null;
+    let approvalTextarea: HTMLTextAreaElement | null = null;
+    const approvalPlayed = this.queuePhasePlayback(
+      this.queuePhaseGeneration(
+        'approval',
+        async () => [
+          observedText(await waitForDirectorObservation('director-observation-approval')),
+          'Melinda has now double-checked the complete diff and chooses approval for this recorded demonstration.',
+          'Melinda first announces her considered approval, then says she will add a clear review note.',
+        ],
+        2,
+      ),
+      {
+        before: async () => {
+          setDirectorTimelinePosition(10);
+          approvalButton = await waitForValue(
+            () => findVisibleButton('Approve patch'),
+            STEP_TIMEOUT_MS,
+            'The human decision gate did not become ready',
+          );
+          await scrollToElement(approvalButton, 'end');
+          await overlay.moveCursorTo(approvalButton);
+        },
+        onLinePlaybackStarted: async (index) => {
+          if (index !== 1 || !approvalTextarea) {
+            return;
+          }
 
-    await this.waitForHumanApproval();
-    await this.recordApproval(await approvalButton);
+          for (let characterCount = 1; characterCount <= DIRECTOR_APPROVAL_NOTE.length; characterCount += 1) {
+            setTextareaValue(approvalTextarea, DIRECTOR_APPROVAL_NOTE.slice(0, characterCount));
+            await delay(12);
+          }
+        },
+        afterLine: async (index) => {
+          if (index === 0) {
+            if (!approvalButton) {
+              throw new Error('The Approve patch button is unavailable');
+            }
+
+            await overlay.moveCursorTo(approvalButton, true);
+            approvalDialog = await waitForValue(
+              () => {
+                const dialog = document.querySelector<HTMLElement>('[data-slot="dialog-content"]');
+                return dialog && isVisible(dialog) ? dialog : null;
+              },
+              STEP_TIMEOUT_MS,
+              'The approval dialog did not open',
+            );
+            approvalTextarea = await waitForValue(
+              () => approvalDialog?.querySelector<HTMLTextAreaElement>('textarea'),
+              STEP_TIMEOUT_MS,
+              'The approval note field did not become ready',
+            );
+            await overlay.moveCursorTo(approvalTextarea, true);
+            return;
+          }
+
+          if (index !== 1 || !approvalDialog) {
+            return;
+          }
+
+          const confirmButton = await waitForValue(
+            () => {
+              const button = findVisibleButton('Approve patch', approvalDialog ?? document);
+              return button && !button.disabled ? button : null;
+            },
+            STEP_TIMEOUT_MS,
+            'The approval note was not accepted',
+          );
+          await overlay.moveCursorTo(confirmButton, true);
+          overlay.setStatus('Decision recorded · verifying patch', 'attention');
+        },
+      },
+    );
+
+    await Promise.all([requirementsPlayed, failuresPlayed, traceabilityPlayed, patchPlayed, reviewPlayed, approvalPlayed]);
+    await waitForValue(
+      () => {
+        if (this.approvalFailed()) {
+          throw new Error('The approval endpoint did not complete');
+        }
+
+        return useRunUi.getState().approval?.status === 'approved' ? true : null;
+      },
+      STEP_TIMEOUT_MS,
+      'Melinda’s approval was not recorded',
+    );
 
     const evidenceStep = await waitForValue(
       () => {
@@ -421,7 +609,7 @@ class DemoDirector {
   /* Chains a turn request plus per-line synthesis onto the generation
    * tail; resolves with playable audio (or caption fallbacks) for the
    * whole phase. */
-  private queuePhaseGeneration(phase: TDirectorPhase, observe: () => Promise<string[]>, maxLines: number): Promise<IPreparedLine[]> {
+  private queuePhaseGeneration(phase: TGeneratedDirectorPhase, observe: () => Promise<string[]>, maxLines: number): Promise<IPreparedLine[]> {
     const generation = this.generationTail.then(async () => {
       const observations = await observe();
       const turn = await this.requestTurn(phase, observations, maxLines);
@@ -436,7 +624,13 @@ class DemoDirector {
         return [];
       }
 
-      return Promise.all(turn.lines.map((line) => this.prepareLine(line)));
+      const deliveries = PHASE_DELIVERIES[phase];
+      return Promise.all(
+        turn.lines.map((line, index) => {
+          const delivery = deliveries?.[index] ?? line.delivery;
+          return this.prepareLine(delivery ? { ...line, delivery } : line);
+        }),
+      );
     });
     this.generationTail = generation.then(
       () => undefined,
@@ -459,7 +653,11 @@ class DemoDirector {
     }
   }
 
-  private async playLine(item: IPreparedLine, onPlaybackStarted?: () => void | Promise<void>): Promise<void> {
+  private async playLine(
+    item: IPreparedLine,
+    onPlaybackStarted?: () => void | Promise<void>,
+    playbackOptions?: IPreparedPlaybackOptions,
+  ): Promise<void> {
     const overlay = this.overlay;
 
     if (!overlay) {
@@ -467,7 +665,7 @@ class DemoDirector {
     }
 
     if (item.speech) {
-      await overlay.playPrepared(item.speech, onPlaybackStarted);
+      await overlay.playPrepared(item.speech, onPlaybackStarted, playbackOptions);
       return;
     }
 
@@ -502,7 +700,18 @@ class DemoDirector {
           continue;
         }
 
-        await this.playLine(item, index === 0 ? hooks?.onFirstPlaybackStarted : undefined);
+        const onPlaybackStarted =
+          hooks?.onFirstPlaybackStarted || hooks?.onLinePlaybackStarted
+            ? async () => {
+                if (index === 0) {
+                  await hooks?.onFirstPlaybackStarted?.();
+                }
+
+                await hooks?.onLinePlaybackStarted?.(index);
+              }
+            : undefined;
+        await this.playLine(item, onPlaybackStarted, hooks?.playbackOptions?.(index));
+        await hooks?.afterLine?.(index);
       }
     });
     this.playbackTail = playback.then(
@@ -512,20 +721,34 @@ class DemoDirector {
     return playback;
   }
 
-  private async speakTurn(turn: IDirectorTurn, onFirstPlaybackStarted?: () => void | Promise<void>): Promise<void> {
-    if (!this.overlay) {
-      return;
-    }
+  private async requestPreparedTurn(phase: TGeneratedDirectorPhase, observations: string[], maxLines: number): Promise<IPreparedLine[]> {
+    const turn = await this.requestTurn(phase, observations, maxLines);
+    return this.prepareTurn(turn);
+  }
 
+  private async prepareTurn(turn: IDirectorTurn): Promise<IPreparedLine[]> {
     for (const line of turn.lines) {
       this.pushHistory(line);
     }
 
-    /* All lines synthesize in parallel; playback stays sequential. */
-    const prepared = turn.lines.map((line) => this.prepareLine(line));
+    return Promise.all(turn.lines.map((line) => this.prepareLine(line)));
+  }
+
+  private async playPreparedTurn(preparedPromise: Promise<IPreparedLine[]>, onFirstPlaybackStarted?: () => void | Promise<void>): Promise<void> {
+    const prepared = await preparedPromise;
 
     for (const [index, item] of prepared.entries()) {
-      await this.playLine(await item, index === 0 ? onFirstPlaybackStarted : undefined);
+      await this.playLine(item, index === 0 ? onFirstPlaybackStarted : undefined);
+    }
+  }
+
+  private async releasePreparedTurn(preparedPromise: Promise<IPreparedLine[]>): Promise<void> {
+    const prepared = await preparedPromise;
+
+    for (const item of prepared) {
+      if (item.speech) {
+        URL.revokeObjectURL(item.speech.objectUrl);
+      }
     }
   }
 
@@ -535,53 +758,6 @@ class DemoDirector {
     if (this.history.length > 12) {
       this.history.shift();
     }
-  }
-
-  private async recordApproval(approvalButton: HTMLButtonElement): Promise<void> {
-    if (!this.overlay) {
-      return;
-    }
-
-    this.overlay.setStatus('Recording approval', 'attention');
-    await this.overlay.moveCursorTo(approvalButton, true);
-
-    const dialog = await waitForValue(
-      () => document.querySelector<HTMLElement>('[data-slot="dialog-content"]'),
-      5_000,
-      'The approval dialog did not open',
-    );
-    const textarea = await waitForValue(() => dialog.querySelector<HTMLTextAreaElement>('textarea'), 2_000, 'The approval note field is missing');
-    await this.overlay.moveCursorTo(textarea, true);
-
-    for (let index = 1; index <= DIRECTOR_APPROVAL_NOTE.length; index += 1) {
-      setTextareaValue(textarea, DIRECTOR_APPROVAL_NOTE.slice(0, index));
-      await delay(13);
-    }
-
-    const confirmButton = await waitForValue(
-      () => {
-        const button = findVisibleButton('Approve patch', dialog);
-        return button && !button.disabled ? button : null;
-      },
-      3_000,
-      'The approval confirmation did not become available',
-    );
-    await this.overlay.moveCursorTo(confirmButton, true);
-    this.overlay.setStatus('Verifying patch');
-  }
-
-  private waitForHumanApproval(): Promise<void> {
-    if (!this.overlay) {
-      return Promise.resolve();
-    }
-
-    this.state = 'awaiting-approval';
-    this.overlay.setCaption('pivanov', 'Human checkpoint: press Space to record approval and run deterministic verification.', false);
-    this.overlay.setStatus('Space to approve', 'attention');
-
-    return new Promise((resolve) => {
-      this.approvalResolver = resolve;
-    });
   }
 
   private async waitForLiveTimeline(): Promise<void> {
@@ -602,10 +778,11 @@ class DemoDirector {
       remainingBudget,
       'The live run exceeded the ninety-second recording budget; reload and try again',
     );
+    setDirectorTimelinePosition(1);
     this.overlay.setStatus('Live result ready');
   }
 
-  private async requestTurn(phase: TDirectorPhase, observations: string[], maxLines: number): Promise<IDirectorTurn> {
+  private async requestTurn(phase: TGeneratedDirectorPhase, observations: string[], maxLines: number): Promise<IDirectorTurn> {
     try {
       const response = await fetch('/api/director/turn', {
         method: 'POST',
@@ -650,7 +827,8 @@ class DemoDirector {
   }
 
   private approvalFailed(): boolean {
-    return document.body.textContent?.includes('The decision endpoint did not respond') ?? false;
+    const text = document.body.textContent ?? '';
+    return text.includes('The decision endpoint did not respond') || text.includes('the approved rerun did not complete');
   }
 }
 
