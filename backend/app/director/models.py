@@ -11,6 +11,7 @@ DirectorSpeechDelivery = Literal[
     "intro_banter_question",
     "intro_codex_quip",
     "intro_on_air_pivot",
+    "intro_reset",
     "intro_host_welcome",
     "intro_launch",
     "review_request",

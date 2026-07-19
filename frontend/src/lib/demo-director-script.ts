@@ -5,6 +5,7 @@ type TDirectorDelivery =
   | 'intro_banter_question'
   | 'intro_codex_quip'
   | 'intro_on_air_pivot'
+  | 'intro_reset'
   | 'intro_host_welcome'
   | 'intro_launch'
   | 'review_request'
@@ -38,8 +39,13 @@ const INTRO_LINES: readonly IDirectorLine[] = [
   },
   {
     speaker: 'melinda',
-    text: 'Exactly... and nobody knew. Hold on! We’re live!',
+    text: 'Exactly, and nobody knew. Hold on... we’re live!',
     delivery: 'intro_on_air_pivot',
+  },
+  {
+    speaker: 'melinda',
+    text: 'All right... let’s do this.',
+    delivery: 'intro_reset',
   },
   {
     speaker: 'melinda',

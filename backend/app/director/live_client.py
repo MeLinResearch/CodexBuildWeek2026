@@ -131,14 +131,19 @@ SPEECH_PERFORMANCE_BY_DELIVERY = {
         "Drop in with one quick, dry observation from the ongoing conversation. Keep it light, amused, and understated."
     ),
     "intro_on_air_pivot": (
-        "Melinda is already genuinely laughing with her teammates as this line begins. Keep a warm, audible laugh in her voice through the first sentence. "
-        "Let a brief natural chuckle escape before 'Hold on!' and say those words through a big smile, slightly breathless from laughing. "
-        "Then land 'We're live!' with delighted, contagious laughter, like the audience caught the team having fun together. "
-        "This is playful joy, not alarm, surprise acting, announcer energy, or a polished presentation. Do not flatten or underplay the laughter."
+        "Melinda agrees with Pavel in a warm, amused voice, then suddenly notices they are live. "
+        "Keep a clear smile in her voice, but do not laugh, chuckle, giggle, gasp, or add any nonverbal sound. "
+        "Make 'Hold on... we're live!' a quick, delighted realization shared with her teammates, not an alarm or an announcement."
+    ),
+    "intro_reset": (
+        "Melinda takes one quiet beat to compose herself and start the demo. "
+        "Say this with a confident smile and cheerful readiness, never as uncertainty, hesitation, or thinking aloud. "
+        "Do not laugh or add any nonverbal sound."
     ),
     "intro_host_welcome": (
         "Melinda looks up from the shared screen and notices that coworkers have joined the call. "
-        "Make 'Hey, everyone!' warm, amused, and spontaneous, then keep the same relaxed office voice through the project name. "
+        "Begin with a fresh burst of friendly energy. Make 'Hey, everyone!' warm, smiling, excited, and spontaneous, "
+        "then keep that cheerful energy through the project name. "
         "She is inviting people into the team’s conversation, not announcing a segment or delivering a prepared introduction."
     ),
     "intro_launch": (

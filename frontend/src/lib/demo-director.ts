@@ -249,6 +249,9 @@ class DemoDirector {
           if (index === 2) {
             return { fadeInMs: 180, initialVolume: 0.92, targetVolume: 1 };
           }
+          if (index === 3) {
+            return { pauseBeforeMs: 450 };
+          }
           return {};
         },
         onLinePlaybackStarted: async (index) => {
@@ -709,6 +712,10 @@ class DemoDirector {
 
     if (!overlay) {
       return;
+    }
+
+    if (playbackOptions?.pauseBeforeMs) {
+      await delay(playbackOptions.pauseBeforeMs);
     }
 
     if (item.speech) {

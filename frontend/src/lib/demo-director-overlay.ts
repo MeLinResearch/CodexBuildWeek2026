@@ -20,6 +20,7 @@ interface IPreparedSpeech {
 interface IPreparedPlaybackOptions {
   fadeInMs?: number;
   initialVolume?: number;
+  pauseBeforeMs?: number;
   targetVolume?: number;
 }
 
