@@ -9,6 +9,7 @@ from app.codex.live_client import CodexExecutionError, LiveCodexClient
 
 
 def request(tmp_path):
+    (tmp_path / "app.py").write_text("a\n", encoding="utf-8")
     return CodexProposalRequest(tmp_path, "RUN-001", "PATCH-001", ("FAIL-001",), ("app.py",),
                                 ("ART-001",), "2026-07-12.1", "2026-07-12T00:00:00Z", "fix")
 

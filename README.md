@@ -13,6 +13,27 @@ make dev
 make smoke
 ```
 
+### Local development
+
+One command starts the API on `127.0.0.1:9001` and the web app on `127.0.0.1:9000` in the same terminal.
+
+On macOS or Linux, activate the virtual environment and run from the repository root:
+
+```bash
+source .venv/bin/activate
+make dev
+```
+
+On Windows PowerShell, activate the virtual environment and run the cross-platform Bun command:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+cd frontend
+bun dev
+```
+
+Press `Ctrl-C` once to stop both processes.
+
 ### Deterministic fixture demo
 
 `make demo` runs the deterministic fixture mode with zero secrets, zero live GPT-5.6 calls, and zero live Codex calls. This is the supported offline, clean-laptop, and judge-runnable path. The fixture replay uses the frozen canonical banking inputs and model outputs while preserving the same persisted API, approval, rerun, and evidence flow.
@@ -22,9 +43,17 @@ make smoke
 `make demo-live` starts the backend and frontend for the live recording path. It requires:
 
 - a nonempty `OPENAI_API_KEY`
+- an API model available to the key, configured with `RELEASE_ASSURANCE_GPT_MODEL` (the example uses `gpt-5.6-sol`)
 - an installed and authenticated local Codex CLI (or an executable selected with `RELEASE_ASSURANCE_CODEX_EXECUTABLE`)
 
 Starting `make demo-live` performs prerequisite checks, including `codex --version`, but makes no paid model call. The paid live flow begins only when **Run Live GPT + Codex** is clicked in the browser.
+
+On Windows PowerShell, start the same one-terminal live runtime from the repository root:
+
+```powershell
+$env:OPENAI_API_KEY = "..."
+bun run scripts/demo-live.ts
+```
 
 The live GPT plus Codex implementation exists, but it has not completed a supervised paid-call rehearsal in the target recording environment.
 

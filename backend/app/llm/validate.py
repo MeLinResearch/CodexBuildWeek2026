@@ -88,11 +88,13 @@ def bundle_schema_for_model(schema_name: str) -> JsonObject:
 def _make_strict(value: Any) -> None:
     """Adapt the detached model schema to the strict Structured Outputs subset."""
     if isinstance(value, dict):
+        _add_implicit_type(value)
         properties = value.get("properties")
         if isinstance(properties, dict):
             required = set(value.get("required", []))
             for name, child in properties.items():
                 if name not in required and isinstance(child, dict):
+                    _add_implicit_type(child)
                     child_type = child.get("type")
                     if isinstance(child_type, str):
                         child["type"] = [child_type, "null"]
@@ -104,6 +106,34 @@ def _make_strict(value: Any) -> None:
     elif isinstance(value, list):
         for child in value:
             _make_strict(child)
+
+
+def _add_implicit_type(schema: dict[str, Any]) -> None:
+    if "type" in schema:
+        return
+
+    literals = [schema["const"]] if "const" in schema else schema.get("enum")
+    if not isinstance(literals, list) or not literals:
+        return
+
+    inferred_types = {_json_type_name(literal) for literal in literals}
+    inferred_types.discard(None)
+    if len(inferred_types) == 1:
+        schema["type"] = inferred_types.pop()
+
+
+def _json_type_name(value: Any) -> str | None:
+    if value is None:
+        return "null"
+    if isinstance(value, bool):
+        return "boolean"
+    if isinstance(value, str):
+        return "string"
+    if isinstance(value, int):
+        return "integer"
+    if isinstance(value, float):
+        return "number"
+    return None
 
 
 def _contract_store() -> dict[str, JsonObject]:

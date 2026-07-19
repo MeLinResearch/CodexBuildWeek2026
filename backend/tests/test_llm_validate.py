@@ -73,5 +73,11 @@ def test_bundle_schema_is_fresh_internal_and_does_not_affect_contract():
     assert "provenance" in first["$defs"]
     assert ".schema.json" not in json.dumps(first)
     assert "$schema" not in first and "$id" not in first
+    requirement_properties = first["properties"]["requirements"]["items"]["properties"]
+    provenance_properties = first["$defs"]["provenance"]["properties"]
+    assert requirement_properties["rule_type"]["type"] == "string"
+    assert provenance_properties["schema_version"]["type"] == "string"
+    for name in ("client", "mode", "producer", "validation_status"):
+        assert provenance_properties[name]["type"] == "string"
     assert load_schema("control_manifest.schema.json") == original
     assert validate_output("control_manifest.schema.json", _control_manifest_fixture())

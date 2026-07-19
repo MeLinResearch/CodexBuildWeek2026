@@ -36,6 +36,11 @@ def test_valid_call_arguments_and_metadata(tmp_path, monkeypatch):
     requirement_schema = responses.kwargs["text"]["format"]["schema"]["properties"]["requirements"]["items"]
     assert set(requirement_schema["required"]) == set(requirement_schema["properties"])
     assert requirement_schema["properties"]["tolerance"]["type"] == ["string", "null"]
+    response_schema = responses.kwargs["text"]["format"]["schema"]
+    assert response_schema["properties"]["run_id"]["const"] == "RUN-001"
+    provenance_schema = response_schema["$defs"]["provenance"]["properties"]
+    assert provenance_schema["created_at"]["const"] == "2026-07-12T00:00:00Z"
+    assert provenance_schema["run_id"]["const"] == "RUN-001"
     context = json.loads(responses.kwargs["input"])
     assert context["implementation_doc"] == "doc" and context["provenance"]["client"] == "LiveLLMClient"
 

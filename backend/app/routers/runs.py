@@ -1,3 +1,5 @@
+import logging
+
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel
 
@@ -13,6 +15,8 @@ from app.store.db import Store
 from app.store.state_machine import InvalidTransitionError, RunNotFoundError, transition_run
 
 router = APIRouter(prefix="/api")
+
+logger = logging.getLogger("release_assurance.runs")
 
 FIXTURE_PROVENANCE_FALLBACK = {
     "client": "FixtureLLMClient",
@@ -130,8 +134,12 @@ def create_run(request: RunRequest):
     try: run = run_live_pipeline(_store(), inputs, _make_live_llm_client(), _make_live_codex_client())
     except LiveInputError as exc: raise HTTPException(status_code=400, detail=str(exc)) from exc
     except LiveLLMConfigurationError as exc: raise HTTPException(status_code=503, detail="live LLM is not configured") from exc
-    except LivePipelineError as exc: raise HTTPException(status_code=502, detail={"run_id": exc.run_id, "stage": exc.stage}) from exc
-    except Exception as exc: raise HTTPException(status_code=500, detail="live pipeline failed") from exc
+    except LivePipelineError as exc:
+        logger.exception("live pipeline failed at stage %s (run %s)", exc.stage, exc.run_id)
+        raise HTTPException(status_code=502, detail={"run_id": exc.run_id, "stage": exc.stage}) from exc
+    except Exception as exc:
+        logger.exception("live run failed before reaching the pipeline")
+        raise HTTPException(status_code=500, detail="live pipeline failed") from exc
     return {"run_id": run.run_id}
 
 
@@ -199,6 +207,7 @@ def rerun(run_id: str):
         transition_run(store, run_id, "RERUNNING", actor="api")
         transition_run(store, run_id, "EVIDENCE_READY", actor="api")
     except LiveRerunError as exc:
+        logger.exception("disposable rerun failed for %s (%s)", run_id, patch.patch_id)
         store.set_patch_application(patch.patch_id, "apply_failed", patch.provenance)
         transition_run(store, run_id, "FAILED", actor="api")
         raise HTTPException(status_code=422, detail="approved patch failed disposable verification") from exc

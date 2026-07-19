@@ -1,0 +1,58 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+import { resolvePythonExecutable, runDevelopment } from './dev';
+
+const verifyCommand = async (command: string[]): Promise<boolean> => {
+  try {
+    const commandProcess = Bun.spawn({
+      cmd: command,
+      stdin: 'ignore',
+      stdout: command.at(-1) === '--version' ? 'inherit' : 'ignore',
+      stderr: command.at(-1) === '--version' ? 'inherit' : 'ignore',
+    });
+
+    return (await commandProcess.exited) === 0;
+  } catch {
+    return false;
+  }
+};
+
+const main = async (): Promise<void> => {
+  if (!process.env.OPENAI_API_KEY) {
+    console.error('OPENAI_API_KEY must be set for the live demo runtime');
+    process.exitCode = 1;
+    return;
+  }
+
+  const codexExecutable = process.env.RELEASE_ASSURANCE_CODEX_EXECUTABLE ?? 'codex';
+  if (!(await verifyCommand([codexExecutable, '--version']))) {
+    console.error(`Codex executable was not found or failed: ${codexExecutable}`);
+    process.exitCode = 1;
+    return;
+  }
+
+  const pythonExecutable = resolvePythonExecutable();
+  if (!(await verifyCommand([pythonExecutable, '-c', 'import openai']))) {
+    console.error('The Python OpenAI SDK is not installed. Activate the virtual environment and run make setup.');
+    process.exitCode = 1;
+    return;
+  }
+
+  const temporaryDirectory = await mkdtemp(join(tmpdir(), 'release-assurance-live-'));
+
+  console.log('Live demo runtime starting');
+  console.log('Open http://127.0.0.1:9000 and choose Live GPT + Codex');
+  console.log('No paid model call occurs until the live button is clicked');
+
+  try {
+    process.exitCode = await runDevelopment({
+      RELEASE_ASSURANCE_DB_PATH: join(temporaryDirectory, 'live.sqlite'),
+    });
+  } finally {
+    await rm(temporaryDirectory, { recursive: true, force: true });
+  }
+};
+
+await main();

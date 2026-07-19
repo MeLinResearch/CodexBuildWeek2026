@@ -1,0 +1,148 @@
+import json
+from types import SimpleNamespace
+
+import httpx
+import pytest
+from openai import BadRequestError
+
+from app.director.live_client import DirectorResponseError, LiveDirectorClient
+from app.director.models import DirectorSpeechRequest, DirectorTurnRequest
+
+
+class FakeResponses:
+    def __init__(self, output_text: str):
+        self.output_text = output_text
+        self.calls: list[dict] = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return SimpleNamespace(output_text=self.output_text)
+
+
+class FakeSpeech:
+    def __init__(self, audio: bytes = b"ID3-director-audio"):
+        self.audio = audio
+        self.calls: list[dict] = []
+
+    def create(self, **kwargs):
+        self.calls.append(kwargs)
+        return SimpleNamespace(content=self.audio)
+
+
+class FakeOpenAI:
+    def __init__(self, output_text: str):
+        self.responses = FakeResponses(output_text)
+        self.audio = SimpleNamespace(speech=FakeSpeech())
+
+
+def _request(phase="patch", max_lines=1):
+    return DirectorTurnRequest(
+        phase=phase,
+        observations=["PATCH-002 is pending and the read-only diff is visible."],
+        history=[],
+        remaining_seconds=90,
+        max_lines=max_lines,
+    )
+
+
+def test_generates_schema_validated_turn_for_phase():
+    fake = FakeOpenAI(json.dumps({"lines": [{"speaker": "codex", "text": "I prepared a read-only patch for human review."}]}))
+    client = LiveDirectorClient(client=fake, model_name="gpt-5.6", speech_model_name="tts-1-hd")
+
+    turn = client.generate_turn(_request())
+
+    assert turn.lines[0].speaker == "codex"
+    assert fake.responses.calls[0]["model"] == "gpt-5.6"
+    assert fake.responses.calls[0]["text"]["format"]["strict"] is True
+    assert (
+        fake.responses.calls[0]["text"]["format"]["schema"]["properties"]["lines"]["items"]
+        ["properties"]["text"]["pattern"]
+        == r".*[.!?]$"
+    )
+    assert json.loads(fake.responses.calls[0]["input"])["allowed_speakers"] == ["codex"]
+
+
+def test_rejects_speaker_outside_phase_role():
+    fake = FakeOpenAI(json.dumps({"lines": [{"speaker": "melinda", "text": "I prepared a patch."}]}))
+    client = LiveDirectorClient(client=fake)
+
+    with pytest.raises(DirectorResponseError, match="not allowed"):
+        client.generate_turn(_request())
+
+
+def test_rejects_prohibited_claim():
+    fake = FakeOpenAI(json.dumps({"lines": [{"speaker": "codex", "text": "This is compliance-grade."}]}))
+    client = LiveDirectorClient(client=fake)
+
+    with pytest.raises(DirectorResponseError, match="prohibited"):
+        client.generate_turn(_request())
+
+
+def test_rejects_incomplete_lines():
+    fake = FakeOpenAI(
+        json.dumps(
+            {
+                "lines": [
+                    {
+                        "speaker": "codex",
+                        "text": "Release Assurance catches migration defects before",
+                    }
+                ]
+            }
+        )
+    )
+    client = LiveDirectorClient(client=fake)
+
+    with pytest.raises(DirectorResponseError, match="validation"):
+        client.generate_turn(_request())
+
+
+def test_generates_runtime_speech_with_speaker_voice():
+    fake = FakeOpenAI("{}")
+    client = LiveDirectorClient(client=fake, speech_model_name="gpt-4o-mini-tts")
+
+    speech = client.synthesize(DirectorSpeechRequest(speaker="codex", text="The patch is ready for review."))
+
+    assert speech.audio == b"ID3-director-audio"
+    call = fake.audio.speech.calls[0]
+    assert call["model"] == "gpt-4o-mini-tts"
+    assert call["voice"] == "onyx"
+    assert call["input"] == "The patch is ready for review."
+    assert call["response_format"] == "mp3"
+    assert "verbatim" in call["instructions"]
+    assert "Do not answer the script" in call["instructions"]
+
+
+def test_uses_distinct_high_quality_voices_for_people():
+    fake = FakeOpenAI("{}")
+    client = LiveDirectorClient(client=fake)
+
+    client.synthesize(DirectorSpeechRequest(speaker="melinda", text="The evidence is ready."))
+    client.synthesize(DirectorSpeechRequest(speaker="pivanov", text="The controls are visible."))
+
+    assert fake.audio.speech.calls[0]["voice"] == "marin"
+    assert fake.audio.speech.calls[1]["voice"] == "cedar"
+
+
+def test_rejects_invalid_runtime_audio():
+    fake = FakeOpenAI("{}")
+    fake.audio.speech.create = lambda **kwargs: SimpleNamespace(content=b"")
+    client = LiveDirectorClient(client=fake)
+
+    with pytest.raises(DirectorResponseError, match="empty"):
+        client.synthesize(DirectorSpeechRequest(speaker="codex", text="The patch is ready."))
+
+
+def test_wraps_openai_speech_request_errors():
+    fake = FakeOpenAI("{}")
+    request = httpx.Request("POST", "https://api.openai.com/v1/audio/speech")
+    response = httpx.Response(400, request=request)
+
+    def reject_request(**kwargs):
+        raise BadRequestError("Speech request failed", response=response, body=None)
+
+    fake.audio.speech.create = reject_request
+    client = LiveDirectorClient(client=fake)
+
+    with pytest.raises(DirectorResponseError, match="OpenAI speech request failed with HTTP 400"):
+        client.synthesize(DirectorSpeechRequest(speaker="codex", text="The patch is ready."))

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import copy
 import csv
+import dataclasses
 import hashlib
 import json
 from dataclasses import dataclass
@@ -14,6 +15,7 @@ from jsonschema import Draft202012Validator
 
 from app import config
 from app.codex.client import CodexProposalRequest
+from app.codex.live_client import CodexExecutionError
 from app.llm.validate import validate_output
 from app.pipeline.live_checks import execute_live_checks
 from app.store.db import Store
@@ -99,7 +101,7 @@ def run_live_pipeline(store: Store, inputs: LiveRunInputs, llm_client: Any, code
                     ("balancing_rule", "debits equal credits by branch"),
                     ("exception_handling", "no silent value substitution")]
         actual = [(r.get("rule_type"), r.get("text", "").strip().lower().removesuffix(".")) for r in manifest.get("requirements", [])]
-        if actual != required: raise ValueError("manifest requirements did not match required controls")
+        if actual != required: raise ValueError(f"manifest requirements did not match required controls: expected {required}, got {actual}")
         normalized = copy.deepcopy(manifest); req_ids = store.allocate_ids("REQ", 3, start=4)
         for item, rid in zip(normalized["requirements"], req_ids): item["requirement_id"] = rid
         validate_output("control_manifest.schema.json", normalized)
@@ -127,8 +129,15 @@ def run_live_pipeline(store: Store, inputs: LiveRunInputs, llm_client: Any, code
         patch_id = store.allocate_id("PATCH", start=2)
         context = {"implementation_doc": implementation, "control_manifest": normalized, "failures": failure_payloads, "migration_test_output_path": output_path.relative_to(config.REPO_ROOT).as_posix(), "goal": "Repair all detected migration defects while modifying only reconcile/migration.py", "required_outcomes": ["preserve account identifiers verbatim", "reject unparseable effective dates through the existing rejection path", "treat CREDIT_ADJUSTMENT as a credit", "make Branch 101 balance at 1250.00 debit, 1250.00 credit, 0.00 difference"], "forbidden_changes": ["contracts", "fixtures", "tests", "frontend", "dependencies", "any file except reconcile/migration.py"]}
         request = CodexProposalRequest(config.REPO_ROOT, run_id, patch_id, failure_ids, ("reconcile/migration.py",), (manifest_a, output_a), config.SCHEMA_VERSION, run.created_at, json.dumps(context, sort_keys=True), 1)
-        proposal = codex_client.propose_patch(request)
-        quarantine = config.QUARANTINE_DIR / "codex" / run_id / patch_id / "001"
+        # Codex output varies; a proposal that fails validation (including the
+        # real apply check) gets exactly one retry, with the failed attempt
+        # left quarantined for the audit trail.
+        try:
+            proposal = codex_client.propose_patch(request)
+        except CodexExecutionError:
+            request = dataclasses.replace(request, attempt=2)
+            proposal = codex_client.propose_patch(request)
+        quarantine = config.QUARANTINE_DIR / "codex" / run_id / patch_id / f"{request.attempt:03d}"
         for filename, kind in (("proposal.raw.json", "raw_model_output"), ("events.jsonl", "log"), ("stderr.log", "log")):
             path = quarantine / filename
             if path.is_file(): _artifact(store, run_id, path, kind, "codex", "LiveCodexClient", "quarantined", run.created_at); registered.add(str(path))

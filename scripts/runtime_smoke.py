@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import socket
 import subprocess
 import sys
 import tempfile
@@ -10,7 +11,7 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-BASE_URL = "http://127.0.0.1:9011"
+BASE_URL = ""
 FIXTURE_REQUEST = {"mode": "fixture", "fixture_set": "core-banking"}
 
 
@@ -43,12 +44,18 @@ def wait_for_server() -> None:
 
 
 def main() -> None:
+    global BASE_URL
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as port_socket:
+        port_socket.bind(("127.0.0.1", 0))
+        port = port_socket.getsockname()[1]
+    BASE_URL = f"http://127.0.0.1:{port}"
+
     with tempfile.TemporaryDirectory() as tmp:
         env = os.environ.copy()
         env["RELEASE_ASSURANCE_DB_PATH"] = str(Path(tmp) / "runtime.sqlite")
         env["FIXED_CLOCK"] = "2026-07-12T00:00:00Z"
         process = subprocess.Popen(
-            [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend", "--host", "127.0.0.1", "--port", "9011"],
+            [sys.executable, "-m", "uvicorn", "app.main:app", "--app-dir", "backend", "--host", "127.0.0.1", "--port", str(port)],
             env=env,
         )
         try:
