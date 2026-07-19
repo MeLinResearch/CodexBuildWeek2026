@@ -48,4 +48,8 @@ createRoot(rootElement).render(
   </React.StrictMode>,
 );
 
-installDemoDirector();
+const directorEnabled = new URLSearchParams(window.location.search).get('director') === '1';
+
+if (directorEnabled) {
+  installDemoDirector();
+}

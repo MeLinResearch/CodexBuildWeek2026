@@ -16,7 +16,9 @@ import { setDirectorTimelinePosition } from '@/components/director/timeline-sequ
 import { refAppViewport } from '@/lib/app-viewport';
 import { useRunUi } from '@/state/run-store';
 
-const LIVE_RESULT_BUDGET_MS = 90_000;
+const CODEX_ATTEMPT_TIMEOUT_MS = 180_000;
+const CODEX_MAX_ATTEMPTS = 2;
+const LIVE_RESULT_BUDGET_MS = CODEX_ATTEMPT_TIMEOUT_MS * CODEX_MAX_ATTEMPTS + 30_000;
 const MUSIC_TAIL_MS = 20_000;
 const RECORDING_BUDGET_MS = 175_000;
 const STEP_TIMEOUT_MS = 45_000;
@@ -282,9 +284,9 @@ class DemoDirector {
         },
       });
 
-      /* A live run spends thirty to ninety seconds inside one POST;
-       * each waiting turn is generated and synthesized while the
-       * previous turn is speaking, eliminating model-call silence. */
+      /* A live run may use both Codex attempts before the backend responds.
+       * Each waiting turn is generated and synthesized while the previous
+       * turn is speaking, eliminating model-call silence. */
       while (!this.timelineIsReady() && performance.now() < this.liveDeadline) {
         const elapsedSeconds = Math.max(0, Math.round((performance.now() - this.liveDeadline + LIVE_RESULT_BUDGET_MS) / 1_000));
         const currentPrepared = await (waitingPrepared ??
@@ -877,7 +879,7 @@ class DemoDirector {
         return document.getElementById('step-ingest');
       },
       remainingBudget,
-      'The live run exceeded the ninety-second recording budget; reload and try again',
+      'The live run exceeded the backend retry budget; reload and try again',
     );
     setDirectorTimelinePosition(1);
     this.overlay.setStatus('Live result ready');

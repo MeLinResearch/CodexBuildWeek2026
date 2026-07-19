@@ -45,8 +45,8 @@ const main = async (): Promise<void> => {
   const temporaryDirectory = await mkdtemp(join(tmpdir(), 'release-assurance-live-'));
 
   console.log('Live demo runtime starting');
-  console.log('Open http://127.0.0.1:9000 and choose Live GPT + Codex');
-  console.log('No paid model call occurs until the live button is clicked');
+  console.log('Open http://127.0.0.1:9000/?director=1 and press Space to start the directed recording');
+  console.log('No paid model call occurs until Space is pressed or the live button is clicked manually');
 
   try {
     process.exitCode = await runDevelopment({

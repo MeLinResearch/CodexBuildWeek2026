@@ -49,7 +49,9 @@ Press `Ctrl-C` once to stop both processes.
 - an API model available to the key, configured with `RELEASE_ASSURANCE_GPT_MODEL` (the example uses `gpt-5.6-sol`)
 - an installed and authenticated local Codex CLI (or an executable selected with `RELEASE_ASSURANCE_CODEX_EXECUTABLE`)
 
-Starting `make demo-live` performs prerequisite checks, including `codex --version`, but makes no paid model call. The paid live flow begins only when **Run Live GPT + Codex** is clicked in the browser.
+Starting `make demo-live` performs prerequisite checks, including `codex --version`, but makes no paid model call. Open `http://127.0.0.1:9000` for the normal manual UI, where the paid live flow begins only when **Run Live GPT + Codex** is clicked.
+
+For a directed recording, open `http://127.0.0.1:9000/?director=1`. This explicit query parameter enables the Space-key director; pressing Space begins runtime speech generation and the automated live flow. Without `?director=1`, Space has no demo-director behavior.
 
 On Windows PowerShell, start the same one-terminal live runtime from the repository root:
 
@@ -74,6 +76,10 @@ In the live flow:
 Only defined model-shaped objects, including the control manifest and patch proposal, are schema validated. Other outputs, reports, and logs are not universally schema validated.
 
 In both fixture and live approved-patch verification, the patched Python executes with the user's normal machine permissions. The disposable workspace protects the repository from modification, but it is **not a security sandbox**. Human inspection of the complete diff is the real execution-control boundary.
+
+## Media attribution
+
+The demo uses [Background Music Soft Calm](https://pixabay.com/music/upbeat-background-music-soft-calm-335280/) by INPLUSMUSIC, sourced from Pixabay and used under the [Pixabay Content License](https://pixabay.com/service/license-summary/).
 
 ## Scope and limitations
 
