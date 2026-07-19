@@ -6,11 +6,16 @@ import melindaAvatarUrl from '@/assets/avatar-melinda.png';
 import pivanovAvatarUrl from '@/assets/avatar-pivanov.png';
 import cursorUrl from '@/assets/cursor.svg';
 import pointingHandUrl from '@/assets/pointinghand.svg';
-import { type TDirectorSpeaker, SPEAKER_LABELS } from '@/components/director/script';
+import { SPEAKER_LABELS, type TDirectorSpeaker } from '@/components/director/script';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
 const CHAT_MESSAGE_LIMIT = 14;
+
+interface IDirectorCaptionWord {
+  id: string;
+  text: string;
+}
 
 interface IDirectorChatMessage {
   activeWordIndex: number;
@@ -18,7 +23,7 @@ interface IDirectorChatMessage {
   id: number;
   speaker: TDirectorSpeaker;
   text: string;
-  words: string[] | null;
+  words: IDirectorCaptionWord[] | null;
 }
 
 interface IDirectorChatGroup {
@@ -66,6 +71,14 @@ const speakerColors: Record<TDirectorSpeaker, string> = {
   pivanov: 'text-[#ffc9a3]',
 };
 
+const directorWaveBars = [
+  { className: 'h-[3px] w-px animate-director-wave rounded-sm bg-white [animation-delay:-.3s]', id: 'outer-left' },
+  { className: 'h-1.5 w-px animate-director-wave rounded-sm bg-white [animation-delay:-.12s]', id: 'inner-left' },
+  { className: 'h-[9px] w-px animate-director-wave rounded-sm bg-white', id: 'center' },
+  { className: 'h-1.5 w-px animate-director-wave rounded-sm bg-white [animation-delay:-.12s]', id: 'inner-right' },
+  { className: 'h-[3px] w-px animate-director-wave rounded-sm bg-white [animation-delay:-.3s]', id: 'outer-right' },
+] as const;
+
 const DirectorChatLine = ({ message }: { message: IDirectorChatMessage }) => {
   return (
     <div className="flex w-full animate-director-message-in flex-wrap gap-x-[.28em] gap-y-0.5">
@@ -75,11 +88,11 @@ const DirectorChatLine = ({ message }: { message: IDirectorChatMessage }) => {
 
             return (
               <span
-                key={`${message.id}-${index}`}
+                key={word.id}
                 data-state={state}
                 className="text-[#c7cad4] opacity-0 transition-[opacity,color,text-shadow] duration-150 data-[state=spoken]:opacity-100 data-[state=active]:text-white data-[state=active]:text-shadow-[0_0_11px_rgba(145,134,255,.9)] data-[state=active]:opacity-100"
               >
-                {word}
+                {word.text}
               </span>
             );
           })
@@ -128,22 +141,21 @@ const DemoDirectorOverlayView = () => {
 
   const appendCaption = useCallback((speaker: TDirectorSpeaker, words: string[]): number => {
     const id = refMessageId.current++;
+    const captionWords = words.map((text, index) => ({ id: `${id}-word-${index}`, text }));
     const message: IDirectorChatMessage = {
       activeWordIndex: -1,
       complete: false,
       id,
       speaker,
       text: words.join(' '),
-      words,
+      words: captionWords,
     };
     setMessages((current) => [...current, message].slice(-CHAT_MESSAGE_LIMIT));
     return id;
   }, []);
 
   const setCaptionWordIndex = useCallback((messageId: number, wordIndex: number): void => {
-    setMessages((current) =>
-      current.map((message) => (message.id === messageId ? { ...message, activeWordIndex: wordIndex } : message)),
-    );
+    setMessages((current) => current.map((message) => (message.id === messageId ? { ...message, activeWordIndex: wordIndex } : message)));
   }, []);
 
   const completeCaption = useCallback((messageId: number): void => {
@@ -172,24 +184,22 @@ const DemoDirectorOverlayView = () => {
       return groups;
     }, []);
   }, [messages]);
+  const latestMessageId = messages.at(-1)?.id;
 
   useLayoutEffect(() => {
+    if (latestMessageId === undefined) {
+      return;
+    }
+
     const viewport = refChatViewport.current;
 
     if (viewport) {
       viewport.scrollTo({ top: viewport.scrollHeight, behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [latestMessageId]);
 
   useLayoutEffect(() => {
-    if (
-      !refHost.current ||
-      !refPanel.current ||
-      !refStatus.current ||
-      !refTimer.current ||
-      !refTimerValue.current ||
-      !refCursor.current
-    ) {
+    if (!refHost.current || !refPanel.current || !refStatus.current || !refTimer.current || !refTimerValue.current || !refCursor.current) {
       throw new Error('Demo director overlay did not initialize');
     }
 
@@ -239,17 +249,8 @@ const DemoDirectorOverlayView = () => {
                   draggable={false}
                 />
                 <span className="director-wave absolute top-[-3px] right-0.5 hidden size-4 items-center justify-center gap-px rounded-full border-2 border-[#090b11] bg-[#796df4]">
-                  {Array.from({ length: 5 }, (_, index) => (
-                    <i
-                      key={index}
-                      className={
-                        index === 2
-                          ? 'h-[9px] w-px animate-director-wave rounded-sm bg-white'
-                          : index === 1 || index === 3
-                            ? 'h-1.5 w-px animate-director-wave rounded-sm bg-white [animation-delay:-.12s]'
-                            : 'h-[3px] w-px animate-director-wave rounded-sm bg-white [animation-delay:-.3s]'
-                      }
-                    />
+                  {directorWaveBars.map((bar) => (
+                    <i key={bar.id} className={bar.className} />
                   ))}
                 </span>
                 {label}
@@ -291,7 +292,7 @@ const DemoDirectorOverlayView = () => {
 
       <div
         ref={refCursor}
-        className="group/cursor fixed top-0 left-0 z-2147483646 size-8 translate-x-[50vw] translate-y-[50vh] opacity-0 drop-shadow-[0_3px_4px_rgba(0,0,0,.72)] transition-[transform,opacity] duration-700 ease-[cubic-bezier(.16,1,.3,1)] data-[visible=true]:opacity-100"
+        className="group/cursor fixed top-0 left-0 z-2147483646 size-8 opacity-0 drop-shadow-[0_3px_4px_rgba(0,0,0,.72)] transition-[transform,opacity] duration-700 ease-[cubic-bezier(.16,1,.3,1)] data-[visible=false]:duration-150 data-[visible=true]:opacity-100"
         aria-hidden="true"
       >
         <span className="absolute -top-3.5 -left-3.5 size-7 scale-[.35] rounded-full border-2 border-[#8b80ff]/75 opacity-0 group-data-[clicking=true]/cursor:animate-director-click-ring" />
@@ -313,5 +314,5 @@ const DemoDirectorOverlayView = () => {
   );
 };
 
+export type { IDirectorChatActions };
 export { DemoDirectorOverlayView, getDemoDirectorOverlayElements };
-export type { IDemoDirectorOverlayElements, IDirectorChatActions };

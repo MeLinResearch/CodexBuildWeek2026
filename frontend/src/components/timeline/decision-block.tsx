@@ -17,9 +17,10 @@ type TDecision = 'approve' | 'reject';
 interface IDecisionBlockProps {
   runId: string;
   patch: TPatch;
+  showHeading?: boolean;
 }
 
-const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
+const DecisionBlock = ({ runId, patch, showHeading = true }: IDecisionBlockProps) => {
   const queryClient = useQueryClient();
   const { data: runStatus } = useSuspenseQuery(runStatusQuery(runId));
   const { approval, recordApproval } = useRunUi();
@@ -104,11 +105,13 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
 
   return (
     <div data-director-target="decision-gate" className="rounded-lg border border-primary/35 bg-card p-4 shadow-lift">
-      <div className="flex items-center gap-2.5">
-        <span aria-hidden="true" className="size-2 rounded-full bg-primary animate-attn-pulse dark:bg-primary-subtle" />
-        <h3 className="text-[15px] font-medium tracking-display">Waiting for your decision</h3>
-      </div>
-      <p className="mt-1.5 text-xs text-muted-foreground">
+      {showHeading && (
+        <div className="flex items-center gap-2.5">
+          <span aria-hidden="true" className="size-2 animate-attn-pulse rounded-full bg-primary dark:bg-primary-subtle" />
+          <h3 className="text-[15px] font-medium tracking-display">Waiting for your decision</h3>
+        </div>
+      )}
+      <p className={showHeading ? 'mt-1.5 text-xs text-muted-foreground' : 'text-xs text-muted-foreground'}>
         Codex proposes. <span className="font-medium text-primary dark:text-primary-subtle">Melinda decides: approve or reject.</span> Nothing
         proceeds without her decision.
       </p>

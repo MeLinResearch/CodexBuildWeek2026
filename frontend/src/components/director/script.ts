@@ -3,11 +3,13 @@ type TDirectorPhase = 'intro' | 'live_wait' | 'requirements' | 'failures' | 'tra
 type TDirectorDelivery =
   | 'default'
   | 'intro_banter_question'
-  | 'intro_codex_quip'
   | 'intro_on_air_pivot'
   | 'intro_reset'
   | 'intro_host_welcome'
   | 'intro_launch'
+  | 'intro_codex_welcome'
+  | 'intro_run_start'
+  | 'intro_codex_on_it'
   | 'review_request'
   | 'review_codex_tease'
   | 'review_melinda_reply'
@@ -38,33 +40,53 @@ const DIRECTOR_APPROVAL_NOTE = 'Reviewed the complete diff; approved for determi
 const INTRO_LINES: readonly IDirectorLine[] = [
   {
     speaker: 'pivanov',
-    text: 'Wait... the migration said success, but the balance was wrong?',
+    text: 'Hmm... wait... the migration said success, but the balance was wrong?',
     delivery: 'intro_banter_question',
   },
   {
-    speaker: 'codex',
-    text: 'That’s a very confident definition of success.',
-    delivery: 'intro_codex_quip',
-  },
-  {
     speaker: 'melinda',
-    text: 'Exactly, and nobody knew. Hold on... we’re live!',
+    text: 'Exactly... and nobody knew.',
     delivery: 'intro_on_air_pivot',
   },
   {
     speaker: 'melinda',
-    text: 'All right... let’s do this.',
-    delivery: 'intro_reset',
+    text: 'Oops... we’re live!',
+    delivery: 'intro_on_air_pivot',
   },
   {
     speaker: 'melinda',
-    text: 'Hey, everyone! I’m Melinda. This is Release Assurance, our OpenAI Build Week project for catching silent migration defects.',
+    text: 'All right... let’s do it!',
+    delivery: 'intro_reset',
+  },
+  {
+    speaker: 'pivanov',
+    text: 'Hey, everyone! I’m Pavel.',
     delivery: 'intro_host_welcome',
   },
   {
+    speaker: 'melinda',
+    text: 'Hi... I’m Melinda. This is Release Assurance, our OpenAI Build Week project for catching silent migration defects.',
+    delivery: 'intro_host_welcome',
+  },
+  {
+    speaker: 'melinda',
+    text: 'Let’s get the live pipeline running, right?',
+    delivery: 'intro_run_start',
+  },
+  {
     speaker: 'codex',
-    text: 'Codex here! Your third teammate, ready to go. Let’s run the real pipeline and see if success is actually true.',
+    text: 'Codex here... third teammate. I’ll inspect failures and propose the patch.',
     delivery: 'intro_launch',
+  },
+  {
+    speaker: 'codex',
+    text: 'On it... let’s see what the migration is hiding.',
+    delivery: 'intro_codex_on_it',
+  },
+  {
+    speaker: 'melinda',
+    text: 'Nice to have you on board, Codex.',
+    delivery: 'intro_codex_welcome',
   },
 ];
 

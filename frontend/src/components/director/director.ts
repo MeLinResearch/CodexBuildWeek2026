@@ -1,4 +1,3 @@
-import { refAppViewport } from '@/lib/app-viewport';
 import { DemoDirectorOverlay, delay, type IPreparedPlaybackOptions, type IPreparedSpeech } from '@/components/director/controller';
 import {
   CLOSE_LINES,
@@ -14,6 +13,7 @@ import {
   VERIFY_WAIT_LINE,
 } from '@/components/director/script';
 import { setDirectorTimelinePosition } from '@/components/director/timeline-sequence';
+import { refAppViewport } from '@/lib/app-viewport';
 import { useRunUi } from '@/state/run-store';
 
 const LIVE_RESULT_BUDGET_MS = 90_000;
@@ -38,6 +38,11 @@ interface IPhasePlaybackHooks {
 interface IPreparedLine {
   line: IDirectorLine;
   speech: IPreparedSpeech | null;
+}
+
+interface IPreparedTurn {
+  all: Promise<IPreparedLine[]>;
+  lines: Promise<IPreparedLine>[];
 }
 
 type TGeneratedDirectorPhase = Exclude<TDirectorPhase, 'intro'>;
@@ -112,12 +117,14 @@ const waitForValue = async <T>(read: () => T | null | undefined | false, timeout
   throw new Error(timeoutMessage);
 };
 
-const scrollToElement = async (element: HTMLElement, block: ScrollLogicalPosition = 'nearest'): Promise<void> => {
+const scrollToElement = async (overlay: DemoDirectorOverlay, element: HTMLElement, block: ScrollLogicalPosition = 'nearest'): Promise<void> => {
   const viewport = refAppViewport.current;
 
   if (!viewport) {
     throw new Error('The application ScrollArea viewport is not mounted');
   }
+
+  overlay.hideCursor();
 
   const scrollTargetFor = (alignment: ScrollLogicalPosition): number => {
     const viewportBounds = viewport.getBoundingClientRect();
@@ -234,8 +241,14 @@ class DemoDirector {
     try {
       this.overlay.setStatus('Going live…', 'attention');
       const intro: IDirectorTurn = { lines: [...INTRO_LINES] };
+      const runStartIndex = intro.lines.findIndex((line) => line.delivery === 'intro_run_start');
+
+      if (runStartIndex < 0) {
+        throw new Error('The authored intro does not contain a live run start');
+      }
+
       const introPrepared = this.prepareTurn(intro);
-      let waitingPrepared: Promise<IPreparedLine[]> | null = introPrepared.then(() => {
+      let waitingPrepared: Promise<IPreparedTurn> | null = introPrepared.all.then(() => {
         return this.requestPreparedTurn(
           'live_wait',
           [
@@ -246,28 +259,22 @@ class DemoDirector {
           3,
         );
       });
-      await this.queuePhasePlayback(introPrepared, {
+      await this.queuePhasePlayback(Promise.resolve(introPrepared), {
         playbackOptions: (index) => {
-          if (index === 0) {
-            return { fadeInMs: 500, initialVolume: 0.45, targetVolume: 0.78 };
-          }
-          if (index === 1) {
-            return { fadeInMs: 260, initialVolume: 0.78, targetVolume: 0.92 };
-          }
-          if (index === 2) {
-            return { fadeInMs: 180, initialVolume: 0.92, targetVolume: 1 };
-          }
-          if (index === 3) {
+          if (intro.lines[index]?.delivery === 'intro_reset') {
             return { pauseBeforeMs: 450 };
+          }
+          if (index === runStartIndex) {
+            return { pauseBeforeMs: 350 };
           }
           return {};
         },
         onLinePlaybackStarted: async (index) => {
-          if (index !== intro.lines.length - 1) {
+          if (index !== runStartIndex) {
             return;
           }
 
-          await delay(1_800);
+          await delay(350);
           this.overlay?.setStatus('Starting live run', 'attention');
           await this.overlay?.moveCursorTo(liveButton, true);
           this.overlay?.hideCursor();
@@ -363,7 +370,7 @@ class DemoDirector {
         before: async () => {
           setDirectorTimelinePosition(3);
           const step = await waitForStep('step-requirements', (element) => /REQ-\d{3}/.test(normalizedText(element)));
-          await scrollToElement(step, 'start');
+          await scrollToElement(overlay, step, 'start');
         },
       },
     );
@@ -387,7 +394,7 @@ class DemoDirector {
             (element) => /TEST-\d{3}/.test(normalizedText(element)) && /failed/i.test(normalizedText(element)),
           );
           firstFailedTestRow = step.querySelector<HTMLElement>('[data-director-target="failed-test-row"]');
-          await scrollToElement(step, 'start');
+          await scrollToElement(overlay, step, 'start');
         },
         onLinePlaybackStarted: async (index) => {
           if (index === 1 && firstFailedTestRow) {
@@ -414,13 +421,11 @@ class DemoDirector {
           overlay.hideCursor();
           setDirectorTimelinePosition(7);
           const step = await waitForStep('step-matrix', (element) => element.querySelector('table') !== null);
-          traceabilityRows = Array.from(
-            step.querySelectorAll<HTMLElement>('tbody tr[data-director-expandable="true"]'),
-          );
+          traceabilityRows = Array.from(step.querySelectorAll<HTMLElement>('tbody tr[data-director-expandable="true"]'));
           if (traceabilityRows.length === 0) {
             throw new Error('No expandable traceability rows became available');
           }
-          await scrollToElement(step, 'start');
+          await scrollToElement(overlay, step, 'start');
         },
         onLinePlaybackStarted: async (index) => {
           if (index !== 0) {
@@ -429,10 +434,24 @@ class DemoDirector {
 
           await delay(750);
           for (const row of traceabilityRows) {
-            await scrollToElement(row, 'center');
+            await scrollToElement(overlay, row, 'center');
             const shouldExpand = row.dataset.directorExpanded !== 'true';
             await overlay.moveCursorTo(row, shouldExpand, { xRatio: 0.3, yRatio: 0.5 });
             await delay(180);
+          }
+
+          const lastRow = traceabilityRows.at(-1);
+          if (lastRow) {
+            const lastDetail = await waitForValue(
+              () => {
+                const detail = lastRow.nextElementSibling;
+                return detail instanceof HTMLElement && detail.dataset.directorDetailFor ? detail : null;
+              },
+              STEP_TIMEOUT_MS,
+              'The final traceability detail did not expand',
+            );
+            await delay(260);
+            await scrollToElement(overlay, lastDetail, 'center');
           }
         },
       },
@@ -461,11 +480,11 @@ class DemoDirector {
         onFirstPlaybackStarted: async () => {
           await delay(350);
           if (patchFixLink) {
-            await scrollToElement(patchFixLink, 'center');
+            await scrollToElement(overlay, patchFixLink, 'center');
             await overlay.moveCursorTo(patchFixLink, true);
           }
           if (patchDiffViewer) {
-            await scrollToElement(patchDiffViewer, 'start');
+            await scrollToElement(overlay, patchDiffViewer, 'start');
           }
         },
       },
@@ -499,13 +518,13 @@ class DemoDirector {
         },
         onLinePlaybackStarted: async (index) => {
           if (index === 0 && reviewFileHeader) {
-            await scrollToElement(reviewFileHeader, 'start');
+            await scrollToElement(overlay, reviewFileHeader, 'start');
             await overlay.moveCursorTo(reviewFileHeader, false, { xRatio: 0.28, yRatio: 0.5 });
             return;
           }
 
           if (index === 1 && reviewDiffContent) {
-            await scrollToElement(reviewDiffContent, 'start');
+            await scrollToElement(overlay, reviewDiffContent, 'start');
             await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.38, yRatio: 0.25 });
             await delay(260);
             await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.68, yRatio: 0.48 });
@@ -513,7 +532,7 @@ class DemoDirector {
           }
 
           if (index === 2 && reviewDiffFile && reviewDiffContent) {
-            await scrollToElement(reviewDiffContent, 'start');
+            await scrollToElement(overlay, reviewDiffContent, 'start');
             await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.42, yRatio: 0.28 });
           }
         },
@@ -522,7 +541,7 @@ class DemoDirector {
             await delay(350);
             await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.68, yRatio: 0.5 });
             await delay(300);
-            await scrollToElement(reviewDiffFile, 'end');
+            await scrollToElement(overlay, reviewDiffFile, 'end');
             await overlay.moveCursorTo(reviewDiffContent, false, { xRatio: 0.45, yRatio: 0.76 });
           }
         },
@@ -556,12 +575,12 @@ class DemoDirector {
             'The human decision gate did not become ready',
           );
           approvalButton = findVisibleButton('Approve patch', approvalStep);
+          await scrollToElement(overlay, approvalStep, 'start');
+          await delay(650);
         },
         onLinePlaybackStarted: async (index) => {
           if (index === 0 && approvalButton && approvalStep) {
             await delay(500);
-            await scrollToElement(approvalStep, 'end');
-            await delay(300);
             await overlay.moveCursorTo(approvalButton);
             return;
           }
@@ -639,12 +658,12 @@ class DemoDirector {
       'The recorded decision did not become visible',
     );
     overlay.hideCursor();
-    await scrollToElement(recordedDecision.step, 'start');
+    await scrollToElement(overlay, recordedDecision.step, 'start');
     await overlay.moveCursorTo(recordedDecision.record, false, { xRatio: 0.25, yRatio: 0.35 });
 
     /* Scripted beat while the real apply-and-verify runs: the AI
      * teammate sweating its own patch, claiming nothing. */
-    await this.playPreparedTurn(this.prepareTurn({ lines: [{ ...VERIFY_WAIT_LINE }] }));
+    await this.playPreparedTurn(Promise.resolve(this.prepareTurn({ lines: [{ ...VERIFY_WAIT_LINE }] })));
 
     const evidenceStep = await waitForValue(
       () => {
@@ -667,7 +686,7 @@ class DemoDirector {
       2,
     );
     overlay.hideCursor();
-    await scrollToElement(evidenceStep, 'end');
+    await scrollToElement(overlay, evidenceStep, 'end');
     const evidencePlayed = this.queuePhasePlayback(evidencePrepared);
 
     /* The close is scripted: the recording's final impression never
@@ -675,7 +694,7 @@ class DemoDirector {
      * narration plays. */
     const closePrepared = this.generationTail.then(() => this.prepareTurn({ lines: CLOSE_LINES.map((line) => ({ ...line })) }));
     this.generationTail = closePrepared.then(
-      () => undefined,
+      (prepared) => prepared.all.then(() => undefined),
       () => undefined,
     );
     const closePlayed = this.queuePhasePlayback(closePrepared, {
@@ -698,31 +717,20 @@ class DemoDirector {
   /* Chains a turn request plus per-line synthesis onto the generation
    * tail; resolves with playable audio (or caption fallbacks) for the
    * whole phase. */
-  private queuePhaseGeneration(phase: TGeneratedDirectorPhase, observe: () => Promise<string[]>, maxLines: number): Promise<IPreparedLine[]> {
+  private queuePhaseGeneration(phase: TGeneratedDirectorPhase, observe: () => Promise<string[]>, maxLines: number): Promise<IPreparedTurn> {
     const generation = this.generationTail.then(async () => {
       const observations = await observe();
       const turn = await this.requestTurn(phase, observations, maxLines);
-
-      for (const line of turn.lines) {
-        this.pushHistory(line);
-      }
-
-      const overlay = this.overlay;
-
-      if (!overlay) {
-        return [];
-      }
-
       const deliveries = PHASE_DELIVERIES[phase];
-      return Promise.all(
-        turn.lines.map((line, index) => {
+      return this.prepareTurn({
+        lines: turn.lines.map((line, index) => {
           const delivery = deliveries?.[index] ?? line.delivery;
-          return this.prepareLine(delivery ? { ...line, delivery } : line);
+          return delivery ? { ...line, delivery } : line;
         }),
-      );
+      });
     });
     this.generationTail = generation.then(
-      () => undefined,
+      (prepared) => prepared.all.then(() => undefined),
       () => undefined,
     );
     return generation;
@@ -758,7 +766,7 @@ class DemoDirector {
     }
 
     if (item.speech) {
-      await overlay.playPrepared(item.speech, onPlaybackStarted, playbackOptions);
+      await overlay.playPrepared(item.speech, onPlaybackStarted);
       return;
     }
 
@@ -768,23 +776,20 @@ class DemoDirector {
   /* Chains playback of a prepared phase onto the playback tail; the
    * before hook keeps scrolls and cursor moves in lockstep with the
    * audio they narrate. */
-  private queuePhasePlayback(preparedPromise: Promise<IPreparedLine[]>, hooks?: IPhasePlaybackHooks): Promise<void> {
+  private queuePhasePlayback(preparedPromise: Promise<IPreparedTurn>, hooks?: IPhasePlaybackHooks): Promise<void> {
     const playback = this.playbackTail.then(async () => {
       const prepared = await preparedPromise;
 
       if (this.aborted) {
-        for (const item of prepared) {
-          if (item.speech) {
-            URL.revokeObjectURL(item.speech.objectUrl);
-          }
-        }
-
+        void this.releasePreparedTurn(Promise.resolve(prepared));
         return;
       }
 
       await hooks?.before?.();
 
-      for (const [index, item] of prepared.entries()) {
+      for (const [index, preparedLine] of prepared.lines.entries()) {
+        const item = await preparedLine;
+
         if (this.aborted) {
           if (item.speech) {
             URL.revokeObjectURL(item.speech.objectUrl);
@@ -814,31 +819,34 @@ class DemoDirector {
     return playback;
   }
 
-  private async requestPreparedTurn(phase: TGeneratedDirectorPhase, observations: string[], maxLines: number): Promise<IPreparedLine[]> {
+  private async requestPreparedTurn(phase: TGeneratedDirectorPhase, observations: string[], maxLines: number): Promise<IPreparedTurn> {
     const turn = await this.requestTurn(phase, observations, maxLines);
     return this.prepareTurn(turn);
   }
 
-  private async prepareTurn(turn: IDirectorTurn): Promise<IPreparedLine[]> {
+  private prepareTurn(turn: IDirectorTurn): IPreparedTurn {
     for (const line of turn.lines) {
       this.pushHistory(line);
     }
 
-    return Promise.all(turn.lines.map((line) => this.prepareLine(line)));
+    const lines = turn.lines.map((line) => this.prepareLine(line));
+    return { all: Promise.all(lines), lines };
   }
 
-  private async playPreparedTurn(preparedPromise: Promise<IPreparedLine[]>, onFirstPlaybackStarted?: () => void | Promise<void>): Promise<void> {
+  private async playPreparedTurn(preparedPromise: Promise<IPreparedTurn>, onFirstPlaybackStarted?: () => void | Promise<void>): Promise<void> {
     const prepared = await preparedPromise;
 
-    for (const [index, item] of prepared.entries()) {
+    for (const [index, preparedLine] of prepared.lines.entries()) {
+      const item = await preparedLine;
       await this.playLine(item, index === 0 ? onFirstPlaybackStarted : undefined);
     }
   }
 
-  private async releasePreparedTurn(preparedPromise: Promise<IPreparedLine[]>): Promise<void> {
+  private async releasePreparedTurn(preparedPromise: Promise<IPreparedTurn>): Promise<void> {
     const prepared = await preparedPromise;
+    const lines = await prepared.all;
 
-    for (const item of prepared) {
+    for (const item of lines) {
       if (item.speech) {
         URL.revokeObjectURL(item.speech.objectUrl);
       }

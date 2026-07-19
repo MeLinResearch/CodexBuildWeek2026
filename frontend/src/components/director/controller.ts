@@ -1,10 +1,10 @@
 import backgroundMusicUrl from '@/assets/background-music-soft-calm-335280.mp3';
 import { buildTimedCaptionWords, captionWordIndexAt } from '@/components/director/captions';
 import { getDemoDirectorOverlayElements, type IDirectorChatActions } from '@/components/director/overlay';
-import { type IDirectorLine, type TDirectorSpeaker } from '@/components/director/script';
+import type { IDirectorLine, TDirectorSpeaker } from '@/components/director/script';
 
-const BACKGROUND_MUSIC_VOLUME = 0.3;
-const BACKGROUND_MUSIC_DUCKED_VOLUME = 0.12;
+const BACKGROUND_MUSIC_VOLUME = 0.4;
+const BACKGROUND_MUSIC_DUCKED_VOLUME = 0.3;
 const BACKGROUND_MUSIC_RELEASE_HOLD_MS = 500;
 const CHAT_REVEAL_DURATION_MS = 420;
 
@@ -15,10 +15,7 @@ interface IPreparedSpeech {
 }
 
 interface IPreparedPlaybackOptions {
-  fadeInMs?: number;
-  initialVolume?: number;
   pauseBeforeMs?: number;
-  targetVolume?: number;
 }
 
 interface ICursorMoveOptions {
@@ -79,6 +76,7 @@ class DemoDirectorOverlay {
     this.cursor.dataset.visible = 'false';
     this.cursor.dataset.pointing = 'false';
     this.cursor.dataset.clicking = 'false';
+    this.cursor.style.transform = `translate3d(${Math.round(window.innerWidth / 2)}px, ${Math.round(window.innerHeight / 2)}px, 0)`;
     this.timerStartedAt = performance.now();
     this.updateTimer();
     this.timerInterval = window.setInterval(this.updateTimer, 250);
@@ -125,11 +123,7 @@ class DemoDirectorOverlay {
     this.setStatus('Following UI');
   }
 
-  async playPrepared(
-    prepared: IPreparedSpeech,
-    onPlaybackStarted?: () => void | Promise<void>,
-    options: IPreparedPlaybackOptions = {},
-  ): Promise<void> {
+  async playPrepared(prepared: IPreparedSpeech, onPlaybackStarted?: () => void | Promise<void>): Promise<void> {
     const { line, audio, objectUrl } = prepared;
     this.currentAudio = audio;
 
@@ -143,15 +137,14 @@ class DemoDirectorOverlay {
       this.setBackgroundMusicDucked(true);
       this.startCaptionSync(line.speaker, line.text, audio);
       this.setStatus('Speaking');
-      audio.volume = options.initialVolume ?? (options.fadeInMs ? 0 : 1);
+      audio.volume = 1;
       await audio.play();
 
       const finishPlayback = playbackEnded.then(() => {
         this.finishCaptionSync(line.speaker);
         this.setStatus('Following UI');
       });
-      const fadeIn = options.fadeInMs ? this.fadeAudioVolume(audio, options.targetVolume ?? 1, options.fadeInMs) : Promise.resolve();
-      await Promise.all([finishPlayback, fadeIn, Promise.resolve(onPlaybackStarted?.())]);
+      await Promise.all([finishPlayback, Promise.resolve(onPlaybackStarted?.())]);
     } finally {
       this.stopCaptionSync();
       this.setBackgroundMusicDucked(false);

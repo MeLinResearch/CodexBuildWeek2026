@@ -70,7 +70,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     const sentinel = refEnd.current;
     const root = refScroll.current;
 
-    if (!sentinel || !root || !finished || approval) {
+    if (!sentinel || !root || !finished || approval || directorControlled) {
       setGatePinned(false);
       return;
     }
@@ -85,7 +85,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     return () => {
       observer.disconnect();
     };
-  }, [finished, approval, refScroll]);
+  }, [finished, approval, directorControlled, refScroll]);
 
   /* Autoscroll follows only until the user scrolls up to read; new
    * steps then queue behind the pill. Follow-state is keyed to wheel
@@ -293,9 +293,14 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
         <PatchBlock patch={patch} hoveredFailureId={hoveredFailureId} onHoverFailure={setHoveredFailureId} />
       </AgentStep>
 
-      {!!approval && (
-        <AgentStep id="step-decision" title="Waiting for your decision" activity="Decision recorded in the audit trail" status="done">
-          <DecisionBlock runId={demo.runId} patch={patch} />
+      {(!!approval || (finished && directorControlled)) && (
+        <AgentStep
+          id="step-decision"
+          title="Waiting for your decision"
+          activity={approval ? 'Decision recorded in the audit trail' : 'Melinda reviews the patch and chooses Approve or Reject'}
+          status={approval ? 'done' : 'attn'}
+        >
+          <DecisionBlock runId={demo.runId} patch={patch} showHeading={false} />
         </AgentStep>
       )}
 
@@ -306,7 +311,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
        * needs this tall container as its parent: inside a step it
        * would have no room to travel. */}
       <AnimatePresence>
-        {finished && !approval && (
+        {finished && !approval && !directorControlled && (
           <div
             id="step-decision"
             className={cn(
