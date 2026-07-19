@@ -28,6 +28,7 @@ const TestsBlock = ({ rows }: ITestsBlockProps) => {
       {rows.map((row) => (
         <motion.div
           key={row.testId}
+          data-director-target={row.failed ? 'failed-test-row' : undefined}
           variants={shouldReduceMotion ? undefined : staggerItemVariants}
           className="flex items-center gap-3 border-b px-3.5 py-2.5 last:border-b-0"
         >

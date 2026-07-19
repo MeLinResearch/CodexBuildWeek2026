@@ -3,7 +3,6 @@ from __future__ import annotations
 import csv
 import importlib.util
 import json
-import shutil
 import subprocess
 import sys
 from decimal import Decimal
@@ -58,10 +57,18 @@ def test_fixture_patch_applies_and_repairs_all_planted_defects(tmp_path: Path):
     workspace = tmp_path / "workspace"
     destination = workspace / "reconcile/migration.py"
     destination.parent.mkdir(parents=True)
-    shutil.copy2(MIGRATION_SOURCE, destination)
+    destination.write_text(
+        MIGRATION_SOURCE.read_text(encoding="utf-8"),
+        encoding="utf-8",
+        newline="\n",
+    )
 
     patch_path = workspace / "PATCH-001.diff"
-    patch_path.write_text(str(proposal["diff"]))
+    patch_path.write_text(
+        str(proposal["diff"]),
+        encoding="utf-8",
+        newline="\n",
+    )
 
     check_result = subprocess.run(
         ["git", "apply", "--check", patch_path.name],

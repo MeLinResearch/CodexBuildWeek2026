@@ -1,13 +1,13 @@
 {
   "scripts": {
     "routes:generate": "tsr generate",
-    "dev": "bun run routes:generate && vite",
+    "dev": "bun run ../scripts/dev.ts",
     "build": "bun run routes:generate && tsc -b && vite build",
     "preview": "vite preview",
     "format": "biome check --write .",
     "lint": "bun run routes:generate && bun run lint:biome && bun run lint:types && bun run lint:knip",
     "lint:fix": "biome check --write . && bun lint",
-    "lint:biome": "biome check .",
+    "lint:biome": "biome check . ../scripts",
     "lint:types": "tsc -b --pretty false",
     "lint:knip": "knip",
     "test": "bun test"

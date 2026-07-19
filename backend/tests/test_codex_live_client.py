@@ -5,10 +5,11 @@ from types import SimpleNamespace
 import pytest
 
 from app.codex.client import CodexProposalRequest
-from app.codex.live_client import CodexExecutionError, LiveCodexClient
+from app.codex.live_client import _build_codex_command, CodexExecutionError, LiveCodexClient
 
 
 def request(tmp_path):
+    (tmp_path / "app.py").write_text("a\n", encoding="utf-8")
     return CodexProposalRequest(tmp_path, "RUN-001", "PATCH-001", ("FAIL-001",), ("app.py",),
                                 ("ART-001",), "2026-07-12.1", "2026-07-12T00:00:00Z", "fix")
 
@@ -39,6 +40,29 @@ def test_valid_execution_contract(tmp_path):
                        "--sandbox", "read-only", "--color", "never", "--json", "--output-last-message", str(output), "-"]
     assert kwargs["cwd"] == tmp_path and kwargs["timeout"] == 9 and kwargs["shell"] is False
     assert kwargs["input"].startswith("You are the read-only Codex") and kwargs["text"] is True
+
+
+def test_windows_npm_shim_uses_command_processor():
+    assert _build_codex_command(
+        "C:\\Users\\builder\\AppData\\Roaming\\npm\\codex.cmd",
+        ["--version"],
+        platform="nt",
+        comspec="C:\\Windows\\System32\\cmd.exe",
+    ) == [
+        "C:\\Windows\\System32\\cmd.exe",
+        "/d",
+        "/s",
+        "/c",
+        '""C:\\Users\\builder\\AppData\\Roaming\\npm\\codex.cmd" "--version""',
+    ]
+
+
+def test_windows_native_codex_executable_runs_directly():
+    assert _build_codex_command(
+        "C:\\Tools\\codex.exe",
+        ["--version"],
+        platform="nt",
+    ) == ["C:\\Tools\\codex.exe", "--version"]
 
 
 @pytest.mark.parametrize("runner", [Runner(returncode=2), Runner(payload=None)])

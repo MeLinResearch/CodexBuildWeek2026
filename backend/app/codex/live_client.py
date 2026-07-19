@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import os
 import re
+import shutil
 import subprocess
 from pathlib import Path
 from typing import Any, Callable
@@ -12,11 +13,44 @@ from app.codex.client import CodexProposalRequest
 from app.codex.validate import CodexValidationError, validate_patch_proposal
 from app.llm.client import JsonObject
 
-CODEX_INSTRUCTION = "You are the read-only Codex patch proposal boundary for Release Assurance. Do not edit, create, delete, rename, or apply repository files. Do not run commands that write to the repository. Inspect only what is necessary. Return exactly one JSON object matching patch_proposal.schema.json. The diff must be a unified git diff and may target only the supplied allowed paths. Copy all supplied IDs and provenance values exactly. Set status to pending. Do not include markdown or explanatory text."
+CODEX_INSTRUCTION = "You are the read-only Codex patch proposal boundary for Release Assurance. Do not edit, create, delete, rename, or apply repository files. Do not run commands that write to the repository. Inspect only what is necessary. Return exactly one JSON object matching patch_proposal.schema.json. The diff must be a unified git diff and may target only the supplied allowed paths. Copy all supplied IDs and provenance values exactly. Set status to pending. Include full unmodified context lines in every hunk so the diff applies cleanly with git apply. Do not include markdown or explanatory text."
 
 
 class CodexExecutionError(RuntimeError):
     pass
+
+
+def _quote_windows_command_argument(value: str) -> str:
+    return f'"{value.replace("%", "%%").replace(chr(34), chr(34) * 2)}"'
+
+
+def _build_codex_command(
+    executable: str,
+    arguments: list[str],
+    *,
+    platform: str = os.name,
+    comspec: str | None = None,
+) -> list[str]:
+    if platform != "nt":
+        return [executable, *arguments]
+
+    resolved_executable = shutil.which(executable) or executable
+    if Path(resolved_executable).suffix.lower() not in {".bat", ".cmd"}:
+        return [resolved_executable, *arguments]
+
+    command_line = '"{}"'.format(
+        " ".join(
+            _quote_windows_command_argument(argument)
+            for argument in [resolved_executable, *arguments]
+        )
+    )
+    command_processor = (
+        comspec
+        or os.environ.get("ComSpec")
+        or os.environ.get("COMSPEC")
+        or "cmd.exe"
+    )
+    return [command_processor, "/d", "/s", "/c", command_line]
 
 
 class LiveCodexClient:
@@ -36,14 +70,22 @@ class LiveCodexClient:
         quarantine = self.quarantine_root / "codex" / request.run_id / request.patch_id / f"{request.attempt:03d}"
         quarantine.mkdir(parents=True, exist_ok=True)
         proposal_path = quarantine / "proposal.raw.json"
+        # The exact provenance block the validator will demand; the instruction
+        # says "copy provenance exactly", so it must be supplied verbatim or the
+        # model has to guess fields like validation_status (and gets them wrong).
+        provenance = {"run_id": request.run_id, "schema_version": request.schema_version,
+                      "source_artifact_ids": list(request.source_artifact_ids), "created_at": request.created_at,
+                      "producer": "codex", "mode": "live", "client": "LiveCodexClient",
+                      "validation_status": "validated"}
         context = {"run_id": request.run_id, "patch_id": request.patch_id,
                    "failure_ids": list(request.failure_ids), "allowed_paths": list(request.allowed_paths),
                    "source_artifact_ids": list(request.source_artifact_ids), "schema_version": request.schema_version,
-                   "created_at": request.created_at, "task_context": request.task_context}
+                   "created_at": request.created_at, "provenance": provenance, "task_context": request.task_context}
         prompt = f"{CODEX_INSTRUCTION}\n{json.dumps(context, separators=(',', ':'))}"
-        command = [self.executable, "-a", "never", "exec", "--ephemeral", "--ignore-user-config",
-                   "--cd", str(request.repo_path), "--sandbox", "read-only", "--color", "never", "--json",
-                   "--output-last-message", str(proposal_path), "-"]
+        arguments = ["-a", "never", "exec", "--ephemeral", "--ignore-user-config",
+                     "--cd", str(request.repo_path), "--sandbox", "read-only", "--color", "never", "--json",
+                     "--output-last-message", str(proposal_path), "-"]
+        command = _build_codex_command(self.executable, arguments)
         try:
             result = self.runner(command, cwd=request.repo_path, input=prompt, text=True,
                                  capture_output=True, timeout=self.timeout, check=False, shell=False)

@@ -1,7 +1,7 @@
 import { PatchDiff } from '@pierre/diffs/react';
 import { useState } from 'react';
 
-import { type IDiffFile, mapFailuresToFiles, parsePatchFiles, splitPatch } from '@/lib/diff-hunks';
+import { compactPatchContext, type IDiffFile, mapFailuresToFiles, parsePatchFiles, splitPatch } from '@/lib/diff-hunks';
 import { useTheme } from '@/lib/theme';
 import { cn } from '@/lib/utils';
 import { useRunUi } from '@/state/run-store';
@@ -25,7 +25,7 @@ interface IFileHeaderProps {
 
 const FileHeader = ({ file, failureIds, hoveredFailureId, onHoverFailure, onOpenFailure }: IFileHeaderProps) => {
   return (
-    <div className="flex items-center gap-2.5 border-b bg-card px-3.5 py-2">
+    <div data-director-target="diff-file-header" className="flex items-center gap-2.5 border-b bg-card px-3.5 py-2">
       <span className="font-mono text-xs font-semibold">{file.path}</span>
       <span className="font-mono text-2xs">
         <span className="font-semibold text-success">+{file.additions}</span>{' '}
@@ -36,6 +36,7 @@ const FileHeader = ({ file, failureIds, hoveredFailureId, onHoverFailure, onOpen
           <button
             key={failureId}
             type="button"
+            data-director-target="diff-failure"
             onClick={() => onOpenFailure(failureId)}
             onMouseEnter={() => onHoverFailure(failureId)}
             onMouseLeave={() => onHoverFailure(null)}
@@ -61,14 +62,14 @@ const DiffViewer = ({ patch, failureIds, hoveredFailureId, onHoverFailure }: IDi
 
   const files = parsePatchFiles(patch);
   const failureFiles = mapFailuresToFiles(failureIds, files);
-  const visibleSections = splitPatch(patch);
+  const visibleSections = splitPatch(compactPatchContext(patch));
 
   const failuresForPath = (path: string): string[] => {
     return failureIds.filter((failureId) => failureFiles[failureId] === path);
   };
 
   return (
-    <div className="overflow-hidden rounded-lg border bg-card">
+    <div data-director-target="diff-viewer" className="overflow-hidden rounded-lg border bg-card">
       <div className="flex items-center gap-2 border-b px-3.5 py-2">
         <span className="eyebrow">Files changed · {files.length}</span>
         <span className="ml-auto flex overflow-hidden rounded-md border text-3xs font-semibold">
@@ -93,6 +94,7 @@ const DiffViewer = ({ patch, failureIds, hoveredFailureId, onHoverFailure }: IDi
           <div
             key={section.path}
             id={`diff-file-${section.path}`}
+            data-director-target="diff-file"
             className={cn('transition-shadow', highlighted && 'shadow-[inset_0_0_0_2px_var(--destructive)]')}
           >
             <FileHeader
@@ -102,18 +104,20 @@ const DiffViewer = ({ patch, failureIds, hoveredFailureId, onHoverFailure }: IDi
               onHoverFailure={onHoverFailure}
               onOpenFailure={(failureId) => revealFailure(failureId)}
             />
-            <PatchDiff
-              key={`${theme}-${diffStyle}`}
-              patch={section.patch}
-              disableWorkerPool
-              options={{
-                theme: { light: 'github-light-default', dark: 'github-dark-default' },
-                themeType: theme,
-                diffStyle,
-                hunkSeparators: 'simple',
-              }}
-              renderCustomHeader={() => null}
-            />
+            <div data-director-target="diff-content">
+              <PatchDiff
+                key={`${theme}-${diffStyle}`}
+                patch={section.patch}
+                disableWorkerPool
+                options={{
+                  theme: { light: 'github-light-default', dark: 'github-dark-default' },
+                  themeType: theme,
+                  diffStyle,
+                  hunkSeparators: 'simple',
+                }}
+                renderCustomHeader={() => null}
+              />
+            </div>
           </div>
         );
       })}

@@ -17,9 +17,10 @@ type TDecision = 'approve' | 'reject';
 interface IDecisionBlockProps {
   runId: string;
   patch: TPatch;
+  showHeading?: boolean;
 }
 
-const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
+const DecisionBlock = ({ runId, patch, showHeading = true }: IDecisionBlockProps) => {
   const queryClient = useQueryClient();
   const { data: runStatus } = useSuspenseQuery(runStatusQuery(runId));
   const { approval, recordApproval } = useRunUi();
@@ -33,13 +34,15 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   const approveMutation = useMutation({
     mutationFn: async (approvalNote: string) => {
       const result = await api.approvePatch(patch.patch_id, DEMO_ACTOR, approvalNote);
+      recordApproval({ status: 'approved', actor: result.actor, note: result.note });
+      refreshRunData();
       const rerun = await api.rerun(runId);
       return { result, rerun };
     },
-    onSuccess: ({ result }) => {
-      recordApproval({ status: 'approved', actor: result.actor, note: result.note });
+    onSuccess: () => {
       refreshRunData();
     },
+    onError: refreshRunData,
   });
 
   const rejectMutation = useMutation({
@@ -76,7 +79,7 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
 
   if (approval) {
     return (
-      <div className="rounded-lg border bg-card p-4 shadow-soft">
+      <div data-director-target="decision-record" className="rounded-lg border bg-card p-4 shadow-soft">
         <div className="flex flex-wrap items-center gap-2.5 text-sm">
           <StatusChip status={approval.status} />
           <span className="text-muted-foreground">
@@ -87,9 +90,13 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
         {!!approval.note && <p className="mt-2 border-l-2 border-border pl-3 text-xs text-muted-foreground italic">"{approval.note}"</p>}
         <p className="mt-2.5 text-2xs text-faint-foreground">
           {approval.status === 'approved'
-            ? runStatus.mode === 'fixture'
-              ? 'The frozen fixture patch was replayed. The deterministic rerun passed and the evidence pack is ready.'
-              : 'The approved patch passed deterministic acceptance checks in a disposable workspace. The evidence pack is ready.'
+            ? approveMutation.isError
+              ? 'The decision was recorded, but the approved rerun did not complete.'
+              : approveMutation.isPending || runStatus.state !== 'EVIDENCE_READY'
+                ? 'Approval is recorded. The deterministic verification is running in a disposable workspace.'
+                : runStatus.mode === 'fixture'
+                  ? 'The frozen fixture patch was replayed. The deterministic rerun passed and the evidence pack is ready.'
+                  : 'The approved patch passed deterministic acceptance checks in a disposable workspace. The evidence pack is ready.'
             : 'Patch rejected. No rerun was performed, and the decision remains in the audit trail.'}
         </p>
       </div>
@@ -97,13 +104,16 @@ const DecisionBlock = ({ runId, patch }: IDecisionBlockProps) => {
   }
 
   return (
-    <div className="rounded-lg border border-primary/35 bg-card p-4 shadow-lift">
-      <div className="flex items-center gap-2.5">
-        <span aria-hidden="true" className="size-2 rounded-full bg-primary animate-attn-pulse dark:bg-primary-subtle" />
-        <h3 className="text-[15px] font-medium tracking-display">Waiting for your decision</h3>
-      </div>
-      <p className="mt-1.5 text-xs text-muted-foreground">
-        Codex proposes. <span className="font-medium text-primary dark:text-primary-subtle">You approve.</span> Nothing ships without you.
+    <div data-director-target="decision-gate" className="rounded-lg border border-primary/35 bg-card p-4 shadow-lift">
+      {showHeading && (
+        <div className="flex items-center gap-2.5">
+          <span aria-hidden="true" className="size-2 animate-attn-pulse rounded-full bg-primary dark:bg-primary-subtle" />
+          <h3 className="text-[15px] font-medium tracking-display">Waiting for your decision</h3>
+        </div>
+      )}
+      <p className={showHeading ? 'mt-1.5 text-xs text-muted-foreground' : 'text-xs text-muted-foreground'}>
+        Codex proposes. <span className="font-medium text-primary dark:text-primary-subtle">Melinda decides: approve or reject.</span> Nothing
+        proceeds without her decision.
       </p>
       <div className="mt-3 flex items-center gap-2.5">
         <Button disabled={busy} onClick={() => openDecision('approve')}>

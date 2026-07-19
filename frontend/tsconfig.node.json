@@ -15,5 +15,5 @@
     "strict": true,
     "noEmit": true
   },
-  "include": ["vite.config.ts", "src/**/*.test.ts", "src/**/*.test.tsx"]
+  "include": ["vite.config.ts", "src/**/*.test.ts", "src/**/*.test.tsx", "../scripts/**/*.ts"]
 }

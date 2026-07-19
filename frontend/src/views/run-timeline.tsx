@@ -4,6 +4,7 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
 
 import { patchesQuery, runStatusQuery, traceabilityMatrixQuery } from '@/api/queries';
+import { directorTimelineIsControlled, type IStepTiming, useTimelineSequence } from '@/components/director/timeline-sequence';
 import { Dot } from '@/components/dot';
 import { type IMinimapStep, StepMinimap } from '@/components/step-minimap';
 import { AgentStep } from '@/components/timeline/agent-step';
@@ -18,7 +19,6 @@ import { Button } from '@/components/ui/button';
 import type { IDemo } from '@/lib/demos';
 import { mapFailuresToFiles, parsePatchFiles } from '@/lib/diff-hunks';
 import { useRunStateSync } from '@/lib/use-run-state-sync';
-import { type IStepTiming, useTimelineSequence } from '@/lib/use-timeline-sequence';
 import { cn } from '@/lib/utils';
 import { type TReplayState, useRunUi } from '@/state/run-store';
 
@@ -53,7 +53,8 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   useRunStateSync(demo.runId);
 
   const [hoveredFailureId, setHoveredFailureId] = useState<string | null>(null);
-  const { statusFor, finished } = useTimelineSequence(STEP_TIMINGS, !!shouldReduceMotion);
+  const directorControlled = directorTimelineIsControlled();
+  const { statusFor, finished } = useTimelineSequence(STEP_TIMINGS, !!shouldReduceMotion, directorControlled);
 
   const refEnd = useRef<HTMLDivElement>(null);
   const refFollowing = useRef(true);
@@ -69,7 +70,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     const sentinel = refEnd.current;
     const root = refScroll.current;
 
-    if (!sentinel || !root || !finished || approval) {
+    if (!sentinel || !root || !finished || approval || directorControlled) {
       setGatePinned(false);
       return;
     }
@@ -84,7 +85,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     return () => {
       observer.disconnect();
     };
-  }, [finished, approval, refScroll]);
+  }, [finished, approval, directorControlled, refScroll]);
 
   /* Autoscroll follows only until the user scrolls up to read; new
    * steps then queue behind the pill. Follow-state is keyed to wheel
@@ -128,23 +129,36 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     setReplayState(REPLAY_STATES[stepsRevealed] ?? 'PATCH_PENDING');
   }, [stepsRevealed, setReplayState]);
 
+  const scrollViewportToEnd = useCallback((): void => {
+    const viewport = refScroll.current;
+
+    if (!viewport) {
+      return;
+    }
+
+    viewport.scrollTo({
+      top: viewport.scrollHeight - viewport.clientHeight,
+      behavior: shouldReduceMotion ? 'auto' : 'smooth',
+    });
+  }, [refScroll, shouldReduceMotion]);
+
   const scrollToEnd = useCallback((): void => {
-    refEnd.current?.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth', block: 'end' });
+    scrollViewportToEnd();
     refFollowing.current = true;
     setStepsBelow(0);
-  }, [shouldReduceMotion]);
+  }, [scrollViewportToEnd]);
 
   useEffect(() => {
-    if (revealedCount <= 1) {
+    if (directorControlled || revealedCount <= 1) {
       return;
     }
 
     if (refFollowing.current) {
-      refEnd.current?.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth', block: 'end' });
+      scrollViewportToEnd();
     } else {
       setStepsBelow((count) => count + 1);
     }
-  }, [revealedCount, shouldReduceMotion]);
+  }, [directorControlled, revealedCount, scrollViewportToEnd]);
 
   const patch = patches[0];
 
@@ -159,12 +173,12 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
 
     steps.push({ id: 'decision', title: 'Waiting for your decision', revealed: finished });
 
-    if (approval) {
+    if (approval?.status === 'approved' && runStatus.state === 'EVIDENCE_READY') {
       steps.push({ id: 'evidence', title: 'Evidence and artifacts', revealed: true });
     }
 
     return steps;
-  }, [statusFor, finished, approval]);
+  }, [statusFor, finished, approval, runStatus.state]);
 
   const requirementIds = useMemo(() => matrix.map((row) => row.requirement_id), [matrix]);
   const testRows = useMemo(() => {
@@ -184,6 +198,25 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
 
   return (
     <div className="mx-auto w-full max-w-[880px] pb-10">
+      {directorControlled && (
+        <div hidden aria-hidden="true">
+          <span id="director-observation-requirements">
+            {requirementIds.length} schema-validated requirements: {requirementIds.join(', ')}.
+          </span>
+          <span id="director-observation-failures">
+            {testRows.length} deterministic tests completed; {failedTestCount} failed. Tests: {testRows.map((row) => row.testId).join(', ')}.
+          </span>
+          <span id="director-observation-traceability">
+            {matrix.length} traceability rows connect requirements, tests, failures, and patch {patch.patch_id}.
+          </span>
+          <span id="director-observation-patch">
+            {patch.patch_id} was proposed by Codex for failures {patch.failure_ids.join(', ')} and is pending human review.
+          </span>
+          <span id="director-observation-approval">
+            Melinda is the named reviewer and must choose Approve or Reject after reviewing the complete diff.
+          </span>
+        </div>
+      )}
       <StepMinimap steps={minimapSteps} refScroll={refScroll} />
       <div className="mb-6">
         <div className="eyebrow flex items-center gap-1.5">
@@ -260,9 +293,14 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
         <PatchBlock patch={patch} hoveredFailureId={hoveredFailureId} onHoverFailure={setHoveredFailureId} />
       </AgentStep>
 
-      {!!approval && (
-        <AgentStep id="step-decision" title="Waiting for your decision" activity="Decision recorded in the audit trail" status="done">
-          <DecisionBlock runId={demo.runId} patch={patch} />
+      {(!!approval || (finished && directorControlled)) && (
+        <AgentStep
+          id="step-decision"
+          title="Waiting for your decision"
+          activity={approval ? 'Decision recorded in the audit trail' : 'Melinda reviews the patch and chooses Approve or Reject'}
+          status={approval ? 'done' : 'attn'}
+        >
+          <DecisionBlock runId={demo.runId} patch={patch} showHeading={false} />
         </AgentStep>
       )}
 
@@ -273,7 +311,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
        * needs this tall container as its parent: inside a step it
        * would have no room to travel. */}
       <AnimatePresence>
-        {finished && !approval && (
+        {finished && !approval && !directorControlled && (
           <div
             id="step-decision"
             className={cn(
@@ -300,7 +338,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
         )}
       </AnimatePresence>
 
-      {!!approval && (
+      {approval?.status === 'approved' && runStatus.state === 'EVIDENCE_READY' && (
         <AgentStep id="step-evidence" title="Evidence and artifacts" activity="Everything on this page, downloadable and auditable" status="done">
           <DownloadsBlock demo={demo} patch={patch} />
         </AgentStep>

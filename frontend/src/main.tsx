@@ -3,6 +3,7 @@ import { createRouter, RouterProvider } from '@tanstack/react-router';
 import React from 'react';
 import { createRoot } from 'react-dom/client';
 
+import { installDemoDirector } from '@/components/director/director';
 import { initializeTheme } from '@/lib/theme';
 import { routeTree } from '@/routeTree.gen';
 
@@ -46,3 +47,9 @@ createRoot(rootElement).render(
     </QueryClientProvider>
   </React.StrictMode>,
 );
+
+const directorEnabled = new URLSearchParams(window.location.search).get('director') === '1';
+
+if (directorEnabled) {
+  installDemoDirector();
+}

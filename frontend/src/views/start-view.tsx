@@ -48,13 +48,6 @@ const cardItemVariants: Variants = {
 
 const DEMO_FACTS = ['Fixture replay or labeled live run', 'Canonical demo data only', 'Validated against frozen contracts'];
 
-type TRunMode = 'fixture' | 'live';
-
-interface ICreateRunVariables {
-  mode: TRunMode;
-  droppedFiles?: IDroppedFile[];
-}
-
 const readFiles = async (files: File[]): Promise<IDroppedFile[]> => {
   return Promise.all(
     files.map(async (file) => {
@@ -71,9 +64,12 @@ const StartView = () => {
   const [dragging, setDragging] = useState(false);
   const [dropError, setDropError] = useState<string | null>(null);
 
+  /* Live runs live on /live: the route starts the POST and shows the
+   * run screen with its first step thinking, so there is no separate
+   * loading UI here. This mutation only covers the fixture replay. */
   const createRunMutation = useMutation({
-    mutationFn: async ({ mode, droppedFiles }: ICreateRunVariables) => {
-      const result = mode === 'live' ? await api.createLiveRun() : await api.createFixtureRun();
+    mutationFn: async (droppedFiles?: IDroppedFile[]) => {
+      const result = await api.createFixtureRun();
       return { result, droppedFiles };
     },
     onSuccess: ({ result, droppedFiles }) => {
@@ -99,7 +95,7 @@ const StartView = () => {
     }
 
     setDropError(null);
-    createRunMutation.mutate({ mode: 'fixture', droppedFiles: await readFiles(files) });
+    createRunMutation.mutate(await readFiles(files));
   };
 
   return (
@@ -131,7 +127,12 @@ const StartView = () => {
         </div>
       </motion.div>
 
-      <motion.div variants={shouldReduceMotion ? undefined : fadeInUpVariants} initial={shouldReduceMotion ? undefined : 'hidden'} animate="visible">
+      <motion.div
+        className="mx-auto w-full max-w-[560px]"
+        variants={shouldReduceMotion ? undefined : fadeInUpVariants}
+        initial={shouldReduceMotion ? undefined : 'hidden'}
+        animate="visible"
+      >
         <section
           aria-label="Drop demo input files"
           onDragOver={(event: DragEvent<HTMLDivElement>) => {
@@ -189,23 +190,23 @@ const StartView = () => {
                 disabled={createRunMutation.isPending}
                 onClick={() => {
                   setDropError(null);
-                  createRunMutation.mutate({ mode: 'live' });
+                  navigate({ to: '/live' });
                 }}
                 className="inline-flex items-center gap-1.5 rounded-full bg-primary px-4 py-1.5 text-xs font-medium text-primary-foreground shadow-soft transition-[background-color,box-shadow] duration-200 hover:bg-primary/90 hover:shadow-lift disabled:cursor-wait disabled:opacity-70"
               >
                 <Play aria-hidden="true" className="size-3 fill-current" />
-                {createRunMutation.isPending && createRunMutation.variables.mode === 'live' ? 'Starting live run…' : 'Run Live GPT + Codex'}
+                Run Live GPT + Codex
               </button>
               <button
                 type="button"
                 disabled={createRunMutation.isPending}
                 onClick={() => {
                   setDropError(null);
-                  createRunMutation.mutate({ mode: 'fixture' });
+                  createRunMutation.mutate(undefined);
                 }}
                 className="inline-flex items-center rounded-full border bg-background px-4 py-1.5 text-xs font-medium transition-colors hover:bg-muted disabled:cursor-wait disabled:opacity-70"
               >
-                {createRunMutation.isPending && createRunMutation.variables.mode === 'fixture' ? 'Starting fixture replay…' : 'Replay Fixture'}
+                {createRunMutation.isPending ? 'Starting fixture replay…' : 'Replay Fixture'}
               </button>
             </span>
           </motion.div>

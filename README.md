@@ -4,6 +4,9 @@ Release Assurance turns the canonical banking conversion specification into sche
 
 ## Setup and commands
 
+The Make targets work on macOS and Linux, and on Windows when GNU Make is
+installed. Windows users without GNU Make can run the Bun commands shown below.
+
 ```bash
 make setup
 make test
@@ -12,6 +15,27 @@ make demo-live
 make dev
 make smoke
 ```
+
+### Local development
+
+One command starts the API on `127.0.0.1:9001` and the web app on `127.0.0.1:9000` in the same terminal.
+
+On macOS or Linux, activate the virtual environment and run from the repository root:
+
+```bash
+source .venv/bin/activate
+make dev
+```
+
+On Windows PowerShell, activate the virtual environment and run the cross-platform Bun command:
+
+```powershell
+.\.venv\Scripts\Activate.ps1
+cd frontend
+bun dev
+```
+
+Press `Ctrl-C` once to stop both processes.
 
 ### Deterministic fixture demo
 
@@ -22,9 +46,22 @@ make smoke
 `make demo-live` starts the backend and frontend for the live recording path. It requires:
 
 - a nonempty `OPENAI_API_KEY`
+- an API model available to the key, configured with `RELEASE_ASSURANCE_GPT_MODEL` (the example uses `gpt-5.6-sol`)
 - an installed and authenticated local Codex CLI (or an executable selected with `RELEASE_ASSURANCE_CODEX_EXECUTABLE`)
 
-Starting `make demo-live` performs prerequisite checks, including `codex --version`, but makes no paid model call. The paid live flow begins only when **Run Live GPT + Codex** is clicked in the browser.
+Starting `make demo-live` performs prerequisite checks, including `codex --version`, but makes no paid model call. Open `http://127.0.0.1:9000` for the normal manual UI, where the paid live flow begins only when **Run Live GPT + Codex** is clicked.
+
+For a directed recording, open `http://127.0.0.1:9000/?director=1`. This explicit query parameter enables the Space-key director; pressing Space begins runtime speech generation and the automated live flow. Without `?director=1`, Space has no demo-director behavior.
+
+On Windows PowerShell, start the same one-terminal live runtime from the repository root:
+
+```powershell
+$env:OPENAI_API_KEY = "<your-openai-api-key>"
+bun run scripts/demo-live.ts
+```
+
+The launcher resolves npm-installed Codex command shims on Windows and invokes
+`codex.cmd` through the Windows command processor automatically.
 
 The live GPT plus Codex implementation exists, but it has not completed a supervised paid-call rehearsal in the target recording environment.
 
@@ -39,6 +76,10 @@ In the live flow:
 Only defined model-shaped objects, including the control manifest and patch proposal, are schema validated. Other outputs, reports, and logs are not universally schema validated.
 
 In both fixture and live approved-patch verification, the patched Python executes with the user's normal machine permissions. The disposable workspace protects the repository from modification, but it is **not a security sandbox**. Human inspection of the complete diff is the real execution-control boundary.
+
+## Media attribution
+
+The demo uses [Background Music Soft Calm](https://pixabay.com/music/upbeat-background-music-soft-calm-335280/) by INPLUSMUSIC, sourced from Pixabay and used under the [Pixabay Content License](https://pixabay.com/service/license-summary/).
 
 ## Scope and limitations
 

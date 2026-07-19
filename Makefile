@@ -1,4 +1,4 @@
-PYTHON ?= python3
+PYTHON ?= python
 BUN ?= bun
 
 .PHONY: setup test demo demo-live dev smoke runtime-smoke
@@ -15,13 +15,13 @@ test:
 	cd frontend && $(BUN) run build
 
 demo:
-	./scripts/demo.sh
+	$(PYTHON) scripts/runtime_smoke.py
 
 demo-live:
-	./scripts/demo-live.sh
+	$(BUN) run scripts/demo-live.ts
 
 dev:
-	./scripts/dev.sh
+	cd frontend && $(BUN) run dev
 
 runtime-smoke:
 	$(PYTHON) scripts/runtime_smoke.py

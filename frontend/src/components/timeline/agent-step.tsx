@@ -2,7 +2,7 @@ import { LoaderCircle } from 'lucide-react';
 import { motion, useReducedMotion } from 'motion/react';
 import type { ReactNode } from 'react';
 
-import type { TStepStatus } from '@/lib/use-timeline-sequence';
+import type { TStepStatus } from '@/components/director/timeline-sequence';
 import { cn } from '@/lib/utils';
 import { fadeInUpVariants } from '@/lib/variants';
 

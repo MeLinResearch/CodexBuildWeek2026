@@ -202,6 +202,8 @@ const MatrixBlock = ({ runId, fixPaths, dataFileName, onHoverFailure }: IMatrixB
                 <Fragment key={row.requirement_id}>
                   <motion.tr
                     id={`matrix-row-${row.requirement_id}`}
+                    data-director-expandable={hasFailures ? 'true' : 'false'}
+                    data-director-expanded={isOpen ? 'true' : 'false'}
                     variants={shouldReduceMotion ? undefined : staggerItemVariants}
                     onClick={() => {
                       if (hasFailures) {
@@ -254,7 +256,7 @@ const MatrixBlock = ({ runId, fixPaths, dataFileName, onHoverFailure }: IMatrixB
                   </motion.tr>
                   <AnimatePresence initial={false}>
                     {isOpen && (
-                      <tr className="border-b bg-muted/25">
+                      <tr data-director-detail-for={row.requirement_id} className="border-b bg-muted/25">
                         <td colSpan={columnCount + 1} className="pr-4 pl-10">
                           <motion.div
                             initial={shouldReduceMotion ? undefined : { height: 0, opacity: 0 }}
