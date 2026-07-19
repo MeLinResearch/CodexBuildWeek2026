@@ -9,6 +9,7 @@ import { type IDirectorLine, SPEAKER_LABELS, type TDirectorSpeaker } from '@/lib
 
 const BACKGROUND_MUSIC_VOLUME = 0.3;
 const CHAT_MESSAGE_LIMIT = 14;
+const CHAT_REVEAL_DURATION_MS = 420;
 
 interface IPreparedSpeech {
   line: IDirectorLine;
@@ -35,6 +36,7 @@ class DemoDirectorOverlay {
   readonly shadow: ShadowRoot;
   readonly cursor: HTMLDivElement;
 
+  private readonly panel: HTMLDivElement;
   private readonly chat: HTMLDivElement;
   private readonly status: HTMLDivElement;
   private readonly timer: HTMLTimeElement;
@@ -44,6 +46,7 @@ class DemoDirectorOverlay {
   private backgroundMusicStopTimer: number | null = null;
   private captionAnimationFrame: number | null = null;
   private activeWordElements: HTMLElement[] = [];
+  private chatRevealPromise: Promise<void> | null = null;
   private timerInterval: number | null = null;
   private timerStartedAt = 0;
 
@@ -83,9 +86,11 @@ class DemoDirectorOverlay {
           justify-content: space-between;
           gap: 10px;
           padding: 11px 14px 9px;
-          border-bottom: 1px solid rgba(130, 137, 160, .16);
+          border-bottom: 1px solid transparent;
           background: rgba(133, 122, 255, .05);
+          transition: border-color .2s ease;
         }
+        .panel[data-chat-visible="true"] .head { border-bottom-color: rgba(130, 137, 160, .16); }
         .team { display: flex; align-items: center; gap: 7px; }
         .person {
           position: relative;
@@ -139,16 +144,35 @@ class DemoDirectorOverlay {
         .wave i:nth-child(3) { height: 9px; }
         @keyframes wave { to { transform: scaleY(.45); opacity: .68; } }
         .chat {
-          flex: 1;
-          min-height: 96px;
+          flex: 0 0 auto;
+          width: 100%;
+          height: 0;
+          min-height: 0;
           display: flex;
           flex-direction: column;
           gap: 9px;
-          overflow-y: auto;
-          padding: 12px 14px 14px;
+          overflow: hidden;
+          padding: 0 14px;
+          opacity: 0;
           scroll-behavior: smooth;
           scrollbar-width: thin;
           scrollbar-color: rgba(130, 137, 160, .4) transparent;
+          transition:
+            height ${CHAT_REVEAL_DURATION_MS}ms cubic-bezier(.16, 1, .3, 1),
+            padding ${CHAT_REVEAL_DURATION_MS}ms cubic-bezier(.16, 1, .3, 1),
+            opacity .24s ease .1s;
+        }
+        .panel[data-chat-visible="true"] .chat {
+          height: 96px;
+          padding: 12px 14px 14px;
+          opacity: 1;
+        }
+        .panel[data-chat-settled="true"] .chat {
+          flex: 1 1 auto;
+          height: auto;
+          min-height: 96px;
+          overflow-y: auto;
+          transition: none;
         }
         .msg {
           display: flex;
@@ -317,11 +341,12 @@ class DemoDirectorOverlay {
           100% { opacity: 0; transform: scale(1.45); }
         }
         @media (prefers-reduced-motion: reduce) {
+          .head, .chat { transition: none; }
           .timer { animation: none; }
           .timer-dot { animation: none !important; }
         }
       </style>
-      <div class="panel">
+      <div class="panel" data-chat-visible="false" data-chat-settled="false">
         <div class="head">
           <div class="team">
             <div class="person" data-speaker="melinda">
@@ -356,16 +381,18 @@ class DemoDirectorOverlay {
     `;
     document.body.append(this.host);
 
+    const panel = this.shadow.querySelector<HTMLDivElement>('.panel');
     const chat = this.shadow.querySelector<HTMLDivElement>('.chat');
     const status = this.shadow.querySelector<HTMLDivElement>('.status');
     const timer = this.shadow.querySelector<HTMLTimeElement>('.timer');
     const timerValue = this.shadow.querySelector<HTMLSpanElement>('.timer-value');
     const cursor = this.shadow.querySelector<HTMLDivElement>('.cursor');
 
-    if (!chat || !status || !timer || !timerValue || !cursor) {
+    if (!panel || !chat || !status || !timer || !timerValue || !cursor) {
       throw new Error('Demo director overlay did not initialize');
     }
 
+    this.panel = panel;
     this.chat = chat;
     this.status = status;
     this.timer = timer;
@@ -388,7 +415,8 @@ class DemoDirectorOverlay {
     this.status.dataset.tone = tone;
   }
 
-  setCaption(speaker: TDirectorSpeaker, text: string, speaking: boolean): void {
+  async setCaption(speaker: TDirectorSpeaker, text: string, speaking: boolean): Promise<void> {
+    await this.revealChat();
     this.stopCaptionSync();
     this.appendMessage(speaker, 'line').textContent = text;
     this.setSpeakerActivity(speaker, speaking);
@@ -406,7 +434,7 @@ class DemoDirectorOverlay {
    * walkthrough keeps moving with a timed caption instead of dying
    * mid-recording. */
   async showCaptionOnly(line: IDirectorLine, onPlaybackStarted?: () => void | Promise<void>): Promise<void> {
-    this.setCaption(line.speaker, line.text, true);
+    await this.setCaption(line.speaker, line.text, true);
     this.setStatus('Voice unavailable, captions only', 'attention');
     const wordCount = line.text.trim().split(/\s+/u).filter(Boolean).length;
     const hold = delay(Math.max(2_800, wordCount * 320));
@@ -429,6 +457,7 @@ class DemoDirectorOverlay {
         audio.addEventListener('error', () => reject(new Error('Runtime director speech failed')), { once: true });
       });
 
+      await this.revealChat();
       this.startCaptionSync(line.speaker, line.text, audio);
       this.setStatus('Speaking');
       audio.volume = options.initialVolume ?? (options.fadeInMs ? 0 : 1);
@@ -536,6 +565,19 @@ class DemoDirectorOverlay {
     this.timerValue.textContent = `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
     this.timer.dateTime = `PT${elapsedSeconds}S`;
   };
+
+  private revealChat(): Promise<void> {
+    if (this.chatRevealPromise) {
+      return this.chatRevealPromise;
+    }
+
+    this.panel.dataset.chatVisible = 'true';
+    const transition = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? Promise.resolve() : delay(CHAT_REVEAL_DURATION_MS);
+    this.chatRevealPromise = transition.then(() => {
+      this.panel.dataset.chatSettled = 'true';
+    });
+    return this.chatRevealPromise;
+  }
 
   private appendMessage(speaker: TDirectorSpeaker | null, kind: 'line' | 'system'): HTMLDivElement {
     const message = document.createElement('div');
@@ -645,8 +687,9 @@ class DemoDirectorOverlay {
     const startedAt = performance.now();
 
     return new Promise((resolve) => {
-      const update = (): void => {
+      const timer = window.setInterval(() => {
         if (audio.ended || audio.paused) {
+          window.clearInterval(timer);
           resolve();
           return;
         }
@@ -655,14 +698,10 @@ class DemoDirectorOverlay {
         audio.volume = initialVolume + (targetVolume - initialVolume) * progress;
 
         if (progress >= 1) {
+          window.clearInterval(timer);
           resolve();
-          return;
         }
-
-        window.requestAnimationFrame(update);
-      };
-
-      update();
+      }, 16);
     });
   }
 

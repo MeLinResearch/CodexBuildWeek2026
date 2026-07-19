@@ -93,7 +93,7 @@ class DirectorLine(BaseModel):
         cleaned = _clean_bounded_text(value, field_name="narration", maximum_characters=280)
         if len(cleaned.split()) > 24:
             raise ValueError("narration must not exceed 24 words")
-        if any(punctuation in cleaned for punctuation in (";", "(", ")", "[", "]", "{", "}")):
+        if any(punctuation in cleaned for punctuation in ("—", "–", ";", "(", ")", "[", "]", "{", "}")):
             raise ValueError("narration contains punctuation unsuitable for live speech")
         if cleaned[-1] not in ".!?":
             raise ValueError("narration must be a complete sentence")

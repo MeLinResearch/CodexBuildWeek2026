@@ -28,7 +28,7 @@ const DIRECTOR_APPROVAL_NOTE = 'Reviewed the complete diff; approved for determi
 const INTRO_LINES: readonly IDirectorLine[] = [
   {
     speaker: 'pivanov',
-    text: 'Wait—the migration said success, but the balance was wrong?',
+    text: 'Wait... the migration said success, but the balance was wrong?',
     delivery: 'intro_banter_question',
   },
   {
@@ -38,17 +38,17 @@ const INTRO_LINES: readonly IDirectorLine[] = [
   },
   {
     speaker: 'melinda',
-    text: 'Exactly—and nobody knew. Oh—we’re live!',
+    text: 'Exactly... and nobody knew. Hold on! We’re live!',
     delivery: 'intro_on_air_pivot',
   },
   {
     speaker: 'melinda',
-    text: 'Hey, everyone! I’m Melinda—welcome to Release Assurance, our OpenAI Build Week project for catching silent migration defects.',
+    text: 'Hey, everyone! I’m Melinda. This is Release Assurance, our OpenAI Build Week project for catching silent migration defects.',
     delivery: 'intro_host_welcome',
   },
   {
     speaker: 'codex',
-    text: 'I’m Codex—the third teammate. Let’s run the real pipeline and find out whether success is actually true.',
+    text: 'Codex here! Your third teammate, ready to go. Let’s run the real pipeline and see if success is actually true.',
     delivery: 'intro_launch',
   },
 ];
@@ -85,19 +85,19 @@ const FALLBACK_LINES: Record<TDirectorPhase, readonly IDirectorLine[]> = {
     },
     {
       speaker: 'codex',
-      text: 'I’m still here, Melinda… I told you it works!',
+      text: 'I’m still here, Melinda... I told you it works!',
       delivery: 'review_codex_tease',
     },
     {
       speaker: 'melinda',
-      text: 'Nice try, Codex—but I’ll double-check it.',
+      text: 'Nice try, Codex... but I’ll double-check it.',
       delivery: 'review_melinda_reply',
     },
   ],
   approval: [
     {
       speaker: 'melinda',
-      text: 'I’ve double-checked the complete diff. The patch looks good—so I’ll approve it.',
+      text: 'I’ve double-checked the complete diff. The patch looks good... so I’ll approve it.',
       delivery: 'approval_decision',
     },
     {
@@ -111,6 +111,16 @@ const FALLBACK_LINES: Record<TDirectorPhase, readonly IDirectorLine[]> = {
     { speaker: 'codex', text: 'My proposed change passed verification, with its diff, decision, and provenance recorded.' },
   ],
   close: [{ speaker: 'melinda', text: 'Two people, one week, Codex as the third teammate.' }],
+};
+
+const constrainDirectorTurn = (phase: TDirectorPhase, turn: IDirectorTurn): IDirectorTurn => {
+  if (phase !== 'review') {
+    return turn;
+  }
+
+  return {
+    lines: FALLBACK_LINES.review.map((line) => ({ ...line })),
+  };
 };
 
 const isDirectorSpaceKey = (event: {
@@ -151,4 +161,4 @@ const isDirectorTurn = (value: unknown): value is IDirectorTurn => {
 };
 
 export type { IDirectorLine, IDirectorTurn, TDirectorPhase, TDirectorSpeaker };
-export { DIRECTOR_APPROVAL_NOTE, FALLBACK_LINES, INTRO_LINES, isDirectorSpaceKey, isDirectorTurn, SPEAKER_LABELS };
+export { constrainDirectorTurn, DIRECTOR_APPROVAL_NOTE, FALLBACK_LINES, INTRO_LINES, isDirectorSpaceKey, isDirectorTurn, SPEAKER_LABELS };

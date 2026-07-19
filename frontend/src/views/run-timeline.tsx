@@ -136,7 +136,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
   }, [shouldReduceMotion]);
 
   useEffect(() => {
-    if (revealedCount <= 1) {
+    if (directorControlled || revealedCount <= 1) {
       return;
     }
 
@@ -145,7 +145,7 @@ const RunTimeline = ({ demo, refScroll }: IRunTimelineProps) => {
     } else {
       setStepsBelow((count) => count + 1);
     }
-  }, [revealedCount, shouldReduceMotion]);
+  }, [directorControlled, revealedCount, shouldReduceMotion]);
 
   const patch = patches[0];
 

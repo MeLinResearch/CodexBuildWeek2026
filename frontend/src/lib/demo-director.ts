@@ -1,5 +1,7 @@
+import { refAppViewport } from '@/lib/app-viewport';
 import { DemoDirectorOverlay, delay, type IPreparedPlaybackOptions, type IPreparedSpeech } from '@/lib/demo-director-overlay';
 import {
+  constrainDirectorTurn,
   DIRECTOR_APPROVAL_NOTE,
   FALLBACK_LINES,
   type IDirectorLine,
@@ -16,6 +18,8 @@ const LIVE_RESULT_BUDGET_MS = 90_000;
 const MUSIC_TAIL_MS = 20_000;
 const RECORDING_BUDGET_MS = 175_000;
 const STEP_TIMEOUT_MS = 45_000;
+const VIEWPORT_BOTTOM_INSET_PX = 36;
+const VIEWPORT_TOP_INSET_PX = 80;
 
 type TDirectorState = 'idle' | 'running' | 'complete' | 'failed';
 
@@ -100,9 +104,42 @@ const waitForValue = async <T>(read: () => T | null | undefined | false, timeout
   throw new Error(timeoutMessage);
 };
 
-const scrollToElement = async (element: HTMLElement, block: ScrollLogicalPosition = 'center'): Promise<void> => {
-  element.scrollIntoView({ behavior: 'smooth', block });
-  await delay(720);
+const scrollToElement = async (element: HTMLElement, block: ScrollLogicalPosition = 'nearest'): Promise<void> => {
+  const viewport = refAppViewport.current;
+
+  if (!viewport) {
+    element.scrollIntoView({ behavior: 'smooth', block });
+    await delay(520);
+    return;
+  }
+
+  const scrollTargetFor = (alignment: ScrollLogicalPosition): number => {
+    const viewportBounds = viewport.getBoundingClientRect();
+    const elementBounds = element.getBoundingClientRect();
+    const safeTop = viewportBounds.top + VIEWPORT_TOP_INSET_PX;
+    const safeBottom = viewportBounds.bottom - VIEWPORT_BOTTOM_INSET_PX;
+    const safeHeight = safeBottom - safeTop;
+    let delta = 0;
+
+    if (elementBounds.height >= safeHeight || alignment === 'start') {
+      delta = elementBounds.top - safeTop;
+    } else if (alignment === 'end') {
+      delta = elementBounds.bottom - safeBottom;
+    } else if (alignment === 'center') {
+      delta = elementBounds.top + elementBounds.height / 2 - (safeTop + safeHeight / 2);
+    } else if (elementBounds.top < safeTop) {
+      delta = elementBounds.top - safeTop;
+    } else if (elementBounds.bottom > safeBottom) {
+      delta = elementBounds.bottom - safeBottom;
+    }
+
+    return Math.max(0, Math.min(viewport.scrollHeight - viewport.clientHeight, viewport.scrollTop + delta));
+  };
+
+  viewport.scrollTo({ top: scrollTargetFor(block), behavior: 'smooth' });
+  await delay(520);
+  viewport.scrollTo({ top: scrollTargetFor('nearest'), behavior: 'auto' });
+  await delay(80);
 };
 
 const waitForStep = async (id: string, ready: (step: HTMLElement) => boolean): Promise<HTMLElement> => {
@@ -187,7 +224,7 @@ class DemoDirector {
     }
 
     try {
-      this.overlay.setStatus('Mixing cold open', 'attention');
+      this.overlay.setStatus('Going live…', 'attention');
       const intro: IDirectorTurn = { lines: [...INTRO_LINES] };
       const introPrepared = this.prepareTurn(intro);
       let waitingPrepared: Promise<IPreparedLine[]> | null = introPrepared.then(() => {
@@ -204,13 +241,13 @@ class DemoDirector {
       await this.queuePhasePlayback(introPrepared, {
         playbackOptions: (index) => {
           if (index === 0) {
-            return { fadeInMs: 700, initialVolume: 0.15, targetVolume: 0.45 };
+            return { fadeInMs: 500, initialVolume: 0.45, targetVolume: 0.78 };
           }
           if (index === 1) {
-            return { fadeInMs: 350, initialVolume: 0.45, targetVolume: 0.68 };
+            return { fadeInMs: 260, initialVolume: 0.78, targetVolume: 0.92 };
           }
           if (index === 2) {
-            return { fadeInMs: 300, initialVolume: 0.68, targetVolume: 0.9 };
+            return { fadeInMs: 180, initialVolume: 0.92, targetVolume: 1 };
           }
           return {};
         },
@@ -283,7 +320,7 @@ class DemoDirector {
       this.aborted = true;
       document.documentElement.dataset.demoDirector = 'failed';
       const message = error instanceof Error ? error.message : 'The live walkthrough stopped unexpectedly';
-      this.overlay.setCaption('codex', message, false);
+      await this.overlay.setCaption('codex', message, false);
       this.overlay.setStatus('Director stopped', 'error');
       this.overlay.stopAudio();
       this.overlay.stopTimer();
@@ -314,7 +351,7 @@ class DemoDirector {
         before: async () => {
           setDirectorTimelinePosition(3);
           const step = await waitForStep('step-requirements', (element) => /REQ-\d{3}/.test(normalizedText(element)));
-          await scrollToElement(step);
+          await scrollToElement(step, 'start');
         },
       },
     );
@@ -336,7 +373,7 @@ class DemoDirector {
             'step-tests',
             (element) => /TEST-\d{3}/.test(normalizedText(element)) && /failed/i.test(normalizedText(element)),
           );
-          await scrollToElement(step);
+          await scrollToElement(step, 'start');
         },
       },
     );
@@ -361,7 +398,7 @@ class DemoDirector {
             STEP_TIMEOUT_MS,
             'No failed traceability row became available',
           );
-          await scrollToElement(step);
+          await scrollToElement(firstFailedRow, 'center');
         },
         onFirstPlaybackStarted: async () => {
           await delay(1_350);
@@ -393,11 +430,16 @@ class DemoDirector {
 
           if (fixLink) {
             await overlay.moveCursorTo(fixLink, true);
-            await delay(800);
+            const diffViewer = await waitForValue(
+              () => patchStep.querySelector<HTMLElement>('[data-director-target="diff-viewer"]'),
+              STEP_TIMEOUT_MS,
+              'The proposed diff did not become visible',
+            );
+            await scrollToElement(diffViewer, 'start');
             return;
           }
 
-          await scrollToElement(patchStep);
+          await scrollToElement(patchStep, 'start');
         },
       },
     );
@@ -411,7 +453,7 @@ class DemoDirector {
         async () => [
           observedText(await waitForDirectorObservation('director-observation-patch')),
           'The complete read-only diff is visible, and the cursor will inspect its file, failure link, and Split and Stacked views.',
-          'Pavel asks Melinda to review it. Codex says exactly: “I’m still here, Melinda… I told you it works!” Melinda answers exactly: “Nice try, Codex—but I’ll double-check it.”',
+          'Use the required three-person review choreography while the cursor inspects the visible diff.',
         ],
         3,
       ),
@@ -427,7 +469,7 @@ class DemoDirector {
             throw new Error('The diff review targets did not become ready');
           }
 
-          await scrollToElement(reviewDiffFile);
+          await scrollToElement(reviewFileHeader, 'start');
         },
         onLinePlaybackStarted: async (index) => {
           if (index === 0 && reviewFileHeader) {
@@ -445,6 +487,7 @@ class DemoDirector {
 
             if (reviewFailureChip) {
               reviewFailureChip.focus({ preventScroll: true });
+              await scrollToElement(reviewFailureChip, 'center');
               await overlay.moveCursorTo(reviewFailureChip);
               await delay(500);
             }
@@ -453,13 +496,16 @@ class DemoDirector {
             if (stackedButton) {
               await overlay.moveCursorTo(stackedButton, true);
             }
+            if (reviewFileHeader) {
+              await scrollToElement(reviewFileHeader, 'start');
+            }
             return;
           }
 
-          if (index === 2 && reviewDiffFile) {
+          if (index === 2 && reviewFileHeader) {
             reviewFailureChip?.blur();
-            await scrollToElement(reviewDiffFile);
-            await overlay.moveCursorTo(reviewDiffFile);
+            await scrollToElement(reviewFileHeader, 'start');
+            await overlay.moveCursorTo(reviewFileHeader);
           }
         },
       },
@@ -575,7 +621,7 @@ class DemoDirector {
         ],
         2,
       ),
-      { before: async () => scrollToElement(evidenceStep, 'center') },
+      { before: async () => scrollToElement(evidenceStep, 'start') },
     );
 
     /* The close generates while the evidence narration plays. */
@@ -594,6 +640,7 @@ class DemoDirector {
           const evidenceButton = findVisibleButton('Evidence pack');
 
           if (evidenceButton) {
+            await scrollToElement(evidenceButton, 'end');
             await overlay.moveCursorTo(evidenceButton);
           }
 
@@ -807,7 +854,7 @@ class DemoDirector {
       if (!isDirectorTurn(payload)) {
         throw new Error('Director turn did not match the browser contract');
       }
-      return payload;
+      return constrainDirectorTurn(phase, payload);
     } catch {
       return { lines: [...FALLBACK_LINES[phase]].slice(0, maxLines) };
     }
