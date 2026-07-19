@@ -12,7 +12,16 @@ type TDirectorDelivery =
   | 'review_codex_tease'
   | 'review_melinda_reply'
   | 'approval_decision'
-  | 'approval_note';
+  | 'approval_note'
+  | 'verify_nervous'
+  | 'close_thanks'
+  | 'close_signoff'
+  | 'wait_banter'
+  | 'reveal_requirements'
+  | 'reveal_failures'
+  | 'reveal_traceability'
+  | 'patch_present'
+  | 'reveal_evidence';
 
 interface IDirectorLine {
   speaker: TDirectorSpeaker;
@@ -59,6 +68,27 @@ const INTRO_LINES: readonly IDirectorLine[] = [
   },
 ];
 
+/* The verification wait and the close are scripted beats: the last
+ * impression of the recording should never gamble on generation. */
+const VERIFY_WAIT_LINE: IDirectorLine = {
+  speaker: 'codex',
+  text: 'And now my patch gets verified... this is the part where I get nervous.',
+  delivery: 'verify_nervous',
+};
+
+const CLOSE_LINES: readonly IDirectorLine[] = [
+  {
+    speaker: 'melinda',
+    text: 'That\u2019s Release Assurance... two people, one week, and Codex as the third teammate. Thanks for watching our Build Week submission!',
+    delivery: 'close_thanks',
+  },
+  {
+    speaker: 'codex',
+    text: 'Codex, signing off. The evidence pack has the receipts.',
+    delivery: 'close_signoff',
+  },
+];
+
 const SPEAKER_LABELS: Record<TDirectorSpeaker, string> = {
   melinda: 'Melinda',
   codex: 'Codex · AI voice',
@@ -70,13 +100,10 @@ const SPEAKER_LABELS: Record<TDirectorSpeaker, string> = {
 const FALLBACK_LINES: Record<TDirectorPhase, readonly IDirectorLine[]> = {
   intro: INTRO_LINES,
   live_wait: [{ speaker: 'pivanov', text: 'The director is waiting for the real GPT five point six and Codex result.' }],
-  requirements: [
-    { speaker: 'pivanov', text: 'GPT five point six extracted the explicit controls, and the manifest passed schema validation.' },
-    { speaker: 'codex', text: 'Behind the scenes, I connected those controls to the deterministic test scaffold.' },
-  ],
+  requirements: [{ speaker: 'pivanov', text: 'GPT five point six extracted the explicit controls, and the manifest passed schema validation.' }],
   failures: [
     { speaker: 'melinda', text: 'Deterministic checks found three blocking defects in the canonical synthetic records.' },
-    { speaker: 'codex', text: 'I analyzed each failure with its requirement and record context before proposing a change.' },
+    { speaker: 'pivanov', text: 'And this failed record is exactly the kind of change nobody catches by eye.' },
   ],
   traceability: [
     { speaker: 'pivanov', text: 'Each failed record maps back to its exact test and original requirement.' },
@@ -116,7 +143,7 @@ const FALLBACK_LINES: Record<TDirectorPhase, readonly IDirectorLine[]> = {
     { speaker: 'melinda', text: 'The approved rerun passed, and its evidence pack is ready.' },
     { speaker: 'codex', text: 'My proposed change passed verification, with its diff, decision, and provenance recorded.' },
   ],
-  close: [{ speaker: 'melinda', text: 'Two people, one week, Codex as the third teammate.' }],
+  close: CLOSE_LINES,
 };
 
 const constrainDirectorTurn = (phase: TDirectorPhase, turn: IDirectorTurn): IDirectorTurn => {
@@ -167,4 +194,14 @@ const isDirectorTurn = (value: unknown): value is IDirectorTurn => {
 };
 
 export type { IDirectorLine, IDirectorTurn, TDirectorPhase, TDirectorSpeaker };
-export { constrainDirectorTurn, DIRECTOR_APPROVAL_NOTE, FALLBACK_LINES, INTRO_LINES, isDirectorSpaceKey, isDirectorTurn, SPEAKER_LABELS };
+export {
+  CLOSE_LINES,
+  constrainDirectorTurn,
+  DIRECTOR_APPROVAL_NOTE,
+  FALLBACK_LINES,
+  INTRO_LINES,
+  isDirectorSpaceKey,
+  isDirectorTurn,
+  SPEAKER_LABELS,
+  VERIFY_WAIT_LINE,
+};

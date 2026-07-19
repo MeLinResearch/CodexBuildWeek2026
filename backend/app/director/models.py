@@ -19,6 +19,15 @@ DirectorSpeechDelivery = Literal[
     "review_melinda_reply",
     "approval_decision",
     "approval_note",
+    "verify_nervous",
+    "close_thanks",
+    "close_signoff",
+    "wait_banter",
+    "reveal_requirements",
+    "reveal_failures",
+    "reveal_traceability",
+    "patch_present",
+    "reveal_evidence",
 ]
 DirectorPhase = Literal[
     "live_wait",

@@ -40,20 +40,23 @@ Facts:
 Speaker roles:
 - Melinda is the lead host and should speak somewhat more than Pavel. She explains the banking risk, operational value, review decisions, evidence, and close.
 - Pavel (speaker id pivanov) is the supporting technical host. Keep his lines especially concise and use him for validation, traceability, and the human-control handoff.
-- Codex speaks as itself, the AI teammate: after each technical reveal it briefly explains its relevant behind-the-scenes contribution, it presents its own patch, confirms its patch passed in evidence, and may give a brief sign-off. Codex never claims GPT-5.6 requirement extraction as its own work and never claims work unsupported by the observations or facts.
+- Codex speaks as itself, the AI teammate: one behind-the-scenes note during traceability, presenting its own patch, a nervous beat while verification runs, confirming its patch passed in evidence, and a brief sign-off. Codex never claims GPT-5.6 requirement extraction as its own work and never claims work unsupported by the observations or facts.
 
 Style:
 - Melinda and Pavel are working beside each other at one desk and enjoying what they built. Their screen recording catches a real office conversation, not a presentation.
 - Write like close teammates reacting to their own screen: relaxed spoken language, contractions, short thought groups, occasional playful reactions, and varied sentence length.
 - Prefer personal, concrete phrasing such as "there it is", "look at that", "this is the part I like", or "that worked" when the observation supports it.
 - Never write like a news report, keynote, product commercial, tutorial voice-over, formal demo script, or corporate announcement.
+- Never echo the observation wording: observations are stage notes, not dialogue. Rewrite everything in your own casual spoken register.
+- Read each line back: if it could open a news broadcast, rewrite it as something you would actually say to a friend beside you.
 - Start every line directly with the presentation. Never open with prompt acknowledgements such as "right", "got it", "okay", or "sure".
 - React first, explain second: when something new is on screen, acknowledge it the way a host reacts to a live result, then say why it matters.
 - Hand off between hosts by name when it helps the flow, and let each line answer or build on the previous line instead of standing alone.
+- Address a teammate by name at most once per phase, and most lines should not open with a name.
 - While waiting for the live result, keep the audience engaged with what GPT-5.6 and Codex are doing right now, without inventing progress.
 - When the observations say the cursor is demonstrating something (expanding a failed record, following a fix link, switching diff views), reference it naturally as it happens, like a host guiding the viewer's eyes.
-- For requirements return exactly two lines: Pavel reacts to the validated manifest, then Codex briefly explains how it connected the extracted controls to deterministic test scaffolding behind the scenes.
-- For failures return exactly two lines: Melinda reacts to the blocking failures, then Codex briefly explains how it analyzed their requirement and record context.
+- For requirements return exactly one Pavel line: he reacts to the validated manifest in his own words.
+- For failures return exactly two lines: Melinda reacts to the blocking failures, then Pavel points at the failed record on screen and notes this is exactly the kind of defect nobody catches by eye.
 - For traceability return exactly two lines: Pavel explains the visible mapping, then Codex briefly explains how it preserved the requirement-to-fix reasoning chain.
 - For review return exactly three lines: Pavel asks Melinda to check the complete diff; while the cursor inspects the diff, Codex says "I’m still here, Melinda... I told you it works!"; Melinda replies "Nice try, Codex... but I’ll double-check it."
 - For approval return exactly two Melinda lines: she confirms she double-checked the complete diff, says the patch looks good, and will approve it; then she says she will add a clear review note.
@@ -168,6 +171,41 @@ SPEECH_PERFORMANCE_BY_DELIVERY = {
     ),
     "approval_note": (
         "Continue naturally from the decision and explain the next action in a brisk, practical tone while typing begins."
+    ),
+    "verify_nervous": (
+        "Codex is watching its own patch go through deterministic verification. Sound playfully anxious and endearing, "
+        "slightly quicker than usual, with a nervous smile. Land the last words lightly, like crossed fingers, not real worry."
+    ),
+    "close_thanks": (
+        "Melinda wraps the recording warmly and proudly, smiling at her team. Keep it genuine and unhurried, "
+        "with real gratitude on the thanks, like ending a good episode with friends."
+    ),
+    "close_signoff": (
+        "One dry, warm sign-off from Codex with an audible smile. Understated and content, a final wink rather than an announcement."
+    ),
+    "wait_banter": (
+        "Casual desk chatter while they wait for a result, like chatting over coffee with an eye on the screen. "
+        "Relaxed, warm, a little amused at their own impatience. Absolutely no announcer energy."
+    ),
+    "reveal_requirements": (
+        "Pavel just watched the manifest validate on screen and he is genuinely pleased. "
+        "Sound like someone leaning in and going 'oh nice' at a passing check, quick and bright, talking to Melinda, not to a camera."
+    ),
+    "reveal_failures": (
+        "The failures just appeared and this is the moment the whole demo exists for. "
+        "Sound caught up in it: a sharp intake of interest, energy rising, leaning toward the screen. "
+        "Excited about catching the bug, never grave or newsreader-serious about it."
+    ),
+    "reveal_traceability": (
+        "Tracing the failure back feels satisfying, like following a thread and finding it connected all along. "
+        "Warm, unhurried satisfaction with a smile, showing a favorite part to a friend."
+    ),
+    "patch_present": (
+        "Codex presents its own patch with quiet pride and a hint of anticipation, like a teammate sliding their work across the desk saying 'take a look'."
+    ),
+    "reveal_evidence": (
+        "The rerun passed and the relief and delight are real. Let genuine happiness through, a laugh is welcome, "
+        "the sound of a team watching their thing actually work."
     ),
 }
 SPEECH_INSTRUCTION = """Perform one exact line from a cheerful conversation between three teammates enjoying a screen recording at the same desk.

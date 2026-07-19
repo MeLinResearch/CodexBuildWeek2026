@@ -1,4 +1,4 @@
-import codexAvatarUrl from '@/assets/avatar-codex.webp';
+import codexAvatarUrl from '@/assets/avatar-codex.png';
 import melindaAvatarUrl from '@/assets/avatar-melinda.png';
 import pivanovAvatarUrl from '@/assets/avatar-pivanov.png';
 import backgroundMusicUrl from '@/assets/background-music-soft-calm-335280.mp3';
@@ -8,6 +8,7 @@ import { buildTimedCaptionWords, captionWordIndexAt } from '@/lib/demo-director-
 import { type IDirectorLine, SPEAKER_LABELS, type TDirectorSpeaker } from '@/lib/demo-director-script';
 
 const BACKGROUND_MUSIC_VOLUME = 0.3;
+const BACKGROUND_MUSIC_DUCKED_VOLUME = 0.12;
 const CHAT_MESSAGE_LIMIT = 14;
 const CHAT_REVEAL_DURATION_MS = 420;
 
@@ -459,6 +460,7 @@ class DemoDirectorOverlay {
       });
 
       await this.revealChat();
+      this.setBackgroundMusicDucked(true);
       this.startCaptionSync(line.speaker, line.text, audio);
       this.setStatus('Speaking');
       audio.volume = options.initialVolume ?? (options.fadeInMs ? 0 : 1);
@@ -472,6 +474,7 @@ class DemoDirectorOverlay {
       await Promise.all([finishPlayback, fadeIn, Promise.resolve(onPlaybackStarted?.())]);
     } finally {
       this.stopCaptionSync();
+      this.setBackgroundMusicDucked(false);
       if (!audio.ended) {
         audio.pause();
       }
@@ -681,6 +684,16 @@ class DemoDirectorOverlay {
       audio.addEventListener('error', handleError, { once: true });
       audio.load();
     });
+  }
+
+  /* Sidechain feel: the music steps aside while someone talks and
+   * breathes back up in the gaps. */
+  private setBackgroundMusicDucked(ducked: boolean): void {
+    if (this.backgroundMusic.paused) {
+      return;
+    }
+
+    void this.fadeAudioVolume(this.backgroundMusic, ducked ? BACKGROUND_MUSIC_DUCKED_VOLUME : BACKGROUND_MUSIC_VOLUME, ducked ? 180 : 600);
   }
 
   private fadeAudioVolume(audio: HTMLAudioElement, targetVolume: number, durationMs: number): Promise<void> {

@@ -1,6 +1,7 @@
 import { refAppViewport } from '@/lib/app-viewport';
 import { DemoDirectorOverlay, delay, type IPreparedPlaybackOptions, type IPreparedSpeech } from '@/lib/demo-director-overlay';
 import {
+  CLOSE_LINES,
   constrainDirectorTurn,
   DIRECTOR_APPROVAL_NOTE,
   FALLBACK_LINES,
@@ -10,6 +11,7 @@ import {
   isDirectorSpaceKey,
   isDirectorTurn,
   type TDirectorPhase,
+  VERIFY_WAIT_LINE,
 } from '@/lib/demo-director-script';
 import { setDirectorTimelinePosition } from '@/lib/use-timeline-sequence';
 import { useRunUi } from '@/state/run-store';
@@ -42,8 +44,14 @@ type TGeneratedDirectorPhase = Exclude<TDirectorPhase, 'intro'>;
 type TDirectorDelivery = NonNullable<IDirectorLine['delivery']>;
 
 const PHASE_DELIVERIES: Partial<Record<TGeneratedDirectorPhase, readonly TDirectorDelivery[]>> = {
+  live_wait: ['wait_banter', 'wait_banter', 'wait_banter'],
+  requirements: ['reveal_requirements'],
+  failures: ['reveal_failures', 'reveal_failures'],
+  traceability: ['reveal_traceability', 'reveal_traceability'],
+  patch: ['patch_present'],
   review: ['review_request', 'review_codex_tease', 'review_melinda_reply'],
   approval: ['approval_decision', 'approval_note'],
+  evidence: ['reveal_evidence', 'reveal_evidence'],
 };
 
 declare global {
@@ -346,9 +354,8 @@ class DemoDirector {
         async () => [
           observedText(await waitForDirectorObservation('director-observation-requirements')),
           'The live control manifest is schema validated.',
-          'After Pavel reacts to the visible result, Codex briefly explains its behind-the-scenes contribution without claiming GPT-5.6 extraction as its own work.',
         ],
-        2,
+        1,
       ),
       {
         before: async () => {
@@ -365,7 +372,7 @@ class DemoDirector {
         async () => [
           observedText(await waitForDirectorObservation('director-observation-failures')),
           'The deterministic checks completed with blocking failures.',
-          'After Melinda reacts to the visible failures, Codex briefly explains how it analyzed the requirement and record context behind them.',
+          'After Melinda reacts, Pavel points at the failed record on screen: exactly the kind of defect nobody catches by eye.',
         ],
         2,
       ),
@@ -603,6 +610,10 @@ class DemoDirector {
       'Melinda’s approval was not recorded',
     );
 
+    /* Scripted beat while the real apply-and-verify runs: the AI
+     * teammate sweating its own patch, claiming nothing. */
+    await this.playPreparedTurn(this.prepareTurn({ lines: [{ ...VERIFY_WAIT_LINE }] }));
+
     const evidenceStep = await waitForValue(
       () => {
         if (this.approvalFailed()) {
@@ -627,30 +638,26 @@ class DemoDirector {
       { before: async () => scrollToElement(evidenceStep, 'start') },
     );
 
-    /* The close generates while the evidence narration plays. */
-    const closePlayed = this.queuePhasePlayback(
-      this.queuePhaseGeneration(
-        'close',
-        async () => [
-          'The evidence pack is available.',
-          'Codex helped build the repository and the event-driven director.',
-          'The close must be brief because the recording is ending.',
-        ],
-        2,
-      ),
-      {
-        before: async () => {
-          const evidenceButton = findVisibleButton('Evidence pack');
-
-          if (evidenceButton) {
-            await scrollToElement(evidenceButton, 'end');
-            await overlay.moveCursorTo(evidenceButton);
-          }
-
-          overlay.setStatus('168 backend · 27 frontend');
-        },
-      },
+    /* The close is scripted: the recording's final impression never
+     * gambles on generation. It still synthesizes while the evidence
+     * narration plays. */
+    const closePrepared = this.generationTail.then(() => this.prepareTurn({ lines: CLOSE_LINES.map((line) => ({ ...line })) }));
+    this.generationTail = closePrepared.then(
+      () => undefined,
+      () => undefined,
     );
+    const closePlayed = this.queuePhasePlayback(closePrepared, {
+      before: async () => {
+        const evidenceButton = findVisibleButton('Evidence pack');
+
+        if (evidenceButton) {
+          await scrollToElement(evidenceButton, 'end');
+          await overlay.moveCursorTo(evidenceButton);
+        }
+
+        overlay.setStatus('168 backend · 27 frontend');
+      },
+    });
 
     await evidencePlayed;
     await closePlayed;
