@@ -22,7 +22,7 @@ make test
 make demo
 ```
 
-`make test` runs the Python backend tests, frontend lint and tests, and the production frontend build. `make demo` runs the complete FastAPI fixture smoke path from failure through approval, rerun, green traceability, and evidence generation.
+`make test` runs the Python backend tests, frontend lint and tests, and the production frontend build. `make demo` runs the complete FastAPI fixture smoke path from failure through approval, rerun, a green traceability matrix, and evidence generation.
 
 For the visual application:
 
