@@ -1,86 +1,163 @@
 # Release Assurance: Codex-Gated Migration Testing for Banks
 
-Release Assurance turns the canonical banking conversion specification into schema-validated requirements, runs deterministic migration checks, maps failures back to requirements, presents a Codex patch proposal for human review, and produces downloadable audit evidence after the approval-gated rerun.
+Release Assurance catches silent banking migration defects before they ship. It turns a conversion specification into traceable requirements, runs deterministic checks, maps each failure to the requirement it violates, presents a bounded Codex patch proposal for human review, and produces an audit-ready evidence pack after the approval-gated rerun.
 
-## Setup and commands
+**Codex proposes. Humans approve. Auditors get receipts.**
 
-The Make targets work on macOS and Linux, and on Windows when GNU Make is
-installed. Windows users without GNU Make can run the Bun commands shown below.
+## Judge quickstart
+
+The supported judging path is deterministic fixture mode. It uses canonical synthetic banking data, requires zero secrets, and makes zero live GPT-5.6 or Codex calls while exercising the same persisted API, approval, rerun, and evidence flow shown in the submitted demo.
+
+Requirements:
+
+- Python 3.12 or newer
+- Bun 1.3.x
+- GNU Make on macOS, Linux, or Windows
+
+From the repository root:
 
 ```bash
 make setup
 make test
 make demo
-make demo-live
-make dev
-make smoke
 ```
 
-### Local development
+`make test` runs the Python backend tests, frontend lint and tests, and the production frontend build. `make demo` runs the complete FastAPI fixture smoke path from failure through approval, rerun, green traceability, and evidence generation.
 
-One command starts the API on `127.0.0.1:9001` and the web app on `127.0.0.1:9000` in the same terminal.
-
-On macOS or Linux, activate the virtual environment and run from the repository root:
+For the visual application:
 
 ```bash
-source .venv/bin/activate
 make dev
 ```
 
-On Windows PowerShell, activate the virtual environment and run the cross-platform Bun command:
+Then open `http://127.0.0.1:9000`. The API runs on `127.0.0.1:9001`. Press `Ctrl-C` once to stop both processes.
 
-```powershell
-.\.venv\Scripts\Activate.ps1
-cd frontend
-bun dev
-```
+CI runs `make setup`, `make test`, and `make demo` on Ubuntu, macOS, and Windows.
 
-Press `Ctrl-C` once to stop both processes.
+## What the product proves
 
-### Deterministic fixture demo
+Release Assurance implements a bounded operating model for AI in regulated workflows:
 
-`make demo` runs the deterministic fixture mode with zero secrets, zero live GPT-5.6 calls, and zero live Codex calls. This is the supported offline, clean-laptop, and judge-runnable path. The fixture replay uses the frozen canonical banking inputs and model outputs while preserving the same persisted API, approval, rerun, and evidence flow.
+1. GPT-5.6 translates implementation prose into a schema-validated control manifest with provenance.
+2. Deterministic checks decide whether the migrated records satisfy those requirements.
+3. Every failure maps back to a stable requirement and evidence artifact.
+4. Codex analyzes the failure and returns a narrowly scoped, reviewable patch proposal.
+5. A human must inspect the complete diff, enter a decision note, and explicitly approve it.
+6. The approved patch is verified in a disposable workspace.
+7. The evidence pack preserves provenance, traceability, the decision record, verification results, and the state-transition audit trail.
 
-### Live recording runtime
+Models interpret and propose. Deterministic systems verify. Humans authorize consequential actions.
 
-`make demo-live` starts the backend and frontend for the live recording path. It requires:
+## How GPT-5.6 and Codex were used
+
+### During development
+
+GPT-5.6 was used as a planning, requirements-analysis, and review partner throughout Build Week. It helped inspect repository state, translate human product and architecture decisions into bounded implementation tasks, review actual patches and CI evidence, diagnose cross-platform failures, and keep the fixture and live claims explicit.
+
+Codex executed narrowly scoped engineering tasks across the repository. Its work included backend and frontend implementation slices, schema and patch-safety validation, test generation and refinement, Windows and browser-automation debugging, cross-platform demo tooling, and final workflow hardening. The human team retained the product, architecture, scope, and approval decisions.
+
+Representative evidence:
+
+- [Codex feedback session](https://chatgpt.com/s/cd_6a5e9a0b4798819183a1ebf3d0250d84)
+- [PR #27: isolated live GPT-5.6 and Codex proposal boundaries](https://github.com/MeLinResearch/CodexBuildWeek2026/pull/27)
+- [Dated pull-request history](https://github.com/MeLinResearch/CodexBuildWeek2026/pulls?q=is%3Apr)
+
+### Inside Release Assurance
+
+The model boundaries are deliberately narrow:
+
+- GPT-5.6 may extract structured requirements, but it cannot determine whether the migration passed.
+- Codex may propose a patch, but it cannot approve or silently apply its own work.
+- Model-shaped outputs are validated before entering deterministic processing.
+- Raw model text is quarantined.
+- Patch scope and applicability are checked before the proposal reaches the reviewer.
+- Human approval remains mandatory before verification.
+
+## Deterministic fixture mode
+
+`make demo` is the supported offline, clean-laptop, and judge-runnable path. The fixture replay uses frozen canonical banking inputs and model-shaped outputs while preserving the real application workflow:
+
+- requirements and provenance
+- deterministic failures
+- traceability matrix
+- complete patch diff
+- reviewer note and approval
+- disposable rerun
+- green verification state
+- downloadable evidence pack
+
+Fixture artifacts are labeled as fixture evidence and are never represented as live model output.
+
+## Optional credentialed live runtime
+
+`make demo-live` starts the optional credentialed GPT-5.6 and Codex path. It requires:
 
 - a nonempty `OPENAI_API_KEY`
-- an API model available to the key, configured with `RELEASE_ASSURANCE_GPT_MODEL` (the example uses `gpt-5.6-sol`)
-- an installed and authenticated local Codex CLI (or an executable selected with `RELEASE_ASSURANCE_CODEX_EXECUTABLE`)
+- an API model available to the key, configured with `RELEASE_ASSURANCE_GPT_MODEL`
+- an installed and authenticated Codex CLI, or an executable selected with `RELEASE_ASSURANCE_CODEX_EXECUTABLE`
 
-Starting `make demo-live` performs prerequisite checks, including `codex --version`, but makes no paid model call. Open `http://127.0.0.1:9000` for the normal manual UI, where the paid live flow begins only when **Run Live GPT + Codex** is clicked.
+Starting `make demo-live` performs prerequisite checks but makes no paid model call. The paid flow begins only when **Run Live GPT + Codex** is clicked in the application.
 
-For a directed recording, open `http://127.0.0.1:9000/?director=1`. This explicit query parameter enables the Space-key director; pressing Space begins runtime speech generation and the automated live flow. Without `?director=1`, Space has no demo-director behavior.
-
-On Windows PowerShell, start the same one-terminal live runtime from the repository root:
+On Windows PowerShell:
 
 ```powershell
 $env:OPENAI_API_KEY = "<your-openai-api-key>"
 bun run scripts/demo-live.ts
 ```
 
-The launcher resolves npm-installed Codex command shims on Windows and invokes
-`codex.cmd` through the Windows command processor automatically.
+The submitted video and supported judging path use deterministic fixture mode. The optional live adapters demonstrate the isolated GPT-5.6 extraction and read-only Codex proposal boundaries without making live credentials a judging requirement.
 
-The live GPT plus Codex implementation exists, but it has not completed a supervised paid-call rehearsal in the target recording environment.
+## Windows without GNU Make
 
-In the live flow:
+Activate the virtual environment and install the dependencies from the repository root:
 
-1. Live GPT-5.6 extracts requirements from the canonical implementation document and validates the resulting control manifest against the frozen contracts.
-2. Deterministic migration checks run against the canonical banking records.
-3. Live Codex proposes a read-only patch diff.
-4. A human must inspect the proposed diff, enter an approval note, and approve it before a rerun can occur.
-5. The approved patch is applied only to a disposable workspace, where the deterministic acceptance checks run and the resulting evidence pack becomes downloadable.
+```powershell
+.\.venv\Scripts\Activate.ps1
+python -m pip install -e "backend[dev]"
+cd frontend
+bun install --frozen-lockfile
+bun dev
+```
 
-Only defined model-shaped objects, including the control manifest and patch proposal, are schema validated. Other outputs, reports, and logs are not universally schema validated.
+For the equivalent test path, run the backend tests from the repository root, then the frontend lint, tests, and build:
 
-In both fixture and live approved-patch verification, the patched Python executes with the user's normal machine permissions. The disposable workspace protects the repository from modification, but it is **not a security sandbox**. Human inspection of the complete diff is the real execution-control boundary.
+```powershell
+python -m pytest backend/tests
+cd frontend
+bun lint
+bun test
+bun run build
+```
+
+## Build Week scope and provenance
+
+The base deterministic migration engine in `reconcile/` is pre-existing work originally developed in [MeLinResearch/Reconcile](https://github.com/MeLinResearch/Reconcile). It was imported under the MIT License from commit `b280ed49388791f3cae7fa2fc88144c2c706bd9d` and was not created during OpenAI Build Week. Detailed provenance and the exact vendoring changes are documented in [`reconcile/README.md`](reconcile/README.md).
+
+The work created during the July 13 to July 21, 2026 submission period is Release Assurance around that engine:
+
+- frozen contracts and canonical synthetic fixtures
+- the GPT-5.6 requirement-extraction boundary
+- deterministic banking controls and failure evidence
+- the Codex patch-proposal and patch-safety boundary
+- the FastAPI workflow, state machine, persistence, and API
+- the React traceability, diff-review, approval, rerun, and evidence experience
+- disposable verification and evidence generation
+- cross-platform CI, testing, and demo tooling
+
+Initial project scaffolding used Claude/Fable and is not represented as Codex work. The linked Codex session, Codex-linked pull requests, and dated commit history distinguish the later GPT-5.6 and Codex contributions.
+
+## Safety boundaries
+
+Only defined model-shaped objects, including the control manifest and patch proposal, are schema validated. Reports and logs are not universally schema validated.
+
+In both fixture and live approved-patch verification, the patched Python executes with the user's normal machine permissions. The disposable workspace protects the repository from modification, but it is not a security sandbox. Human inspection of the complete diff is the execution-control boundary.
+
+The deterministic acceptance verifier is specifically designed for the canonical banking fixture. It is not represented as a general-purpose migration-verification engine. Browser actions use only canonical repository input paths, and dropped files select the deterministic fixture replay rather than uploading arbitrary contents.
 
 ## Media attribution
 
 The demo uses [Background Music Soft Calm](https://pixabay.com/music/upbeat-background-music-soft-calm-335280/) by INPLUSMUSIC, sourced from Pixabay and used under the [Pixabay Content License](https://pixabay.com/service/license-summary/).
 
-## Scope and limitations
+## License
 
-The deterministic acceptance verifier is specifically designed for the canonical banking demo fixture; it is not a general migration-verification engine. Browser actions use only the canonical repository input paths, and dropped files select the deterministic fixture replay rather than uploading their contents. Fixture mode remains the reproducible fallback for CI, clean laptops, and judges without live credentials.
+Release Assurance is available under the [MIT License](LICENSE).
