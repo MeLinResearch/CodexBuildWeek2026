@@ -1,0 +1,286 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MeLinResearch/Updgrade — Test &amp; coverage report</title>
+<meta name="description" content="Automated test and coverage evidence for the LinForensics analysis engine.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+    color-scheme: light;
+    --lf-indigo: #4F46E5;
+    --lf-indigo-strong: #4338CA;
+    --lf-indigo-deep: #3730A3;
+    --lf-indigo-soft: #EEF2FF;
+    --lf-indigo-tint: #F5F6FF;
+    --lf-indigo-line: #DDE1FB;
+    --lf-ink: #0B1220;
+    --lf-ink-2: #1E293B;
+    --lf-body: #475569;
+    --lf-muted: #64748B;
+    --lf-faint: #94A3B8;
+    --lf-line: #E2E8F0;
+    --lf-line-soft: #EFF2F7;
+    --lf-surface: #FFFFFF;
+    --lf-canvas: #F8FAFC;
+    --lf-pass: #0E9F6E;
+    --lf-pass-soft: #E7F7F1;
+    --lf-warn: #B45309;
+    --lf-warn-soft: #FDF3E3;
+    --lf-warn-line: #F3DFBC;
+    --lf-fail: #DC2626;
+    --lf-fail-soft: #FEECEC;
+    --lf-fail-line: #F8D4D4;
+    --lf-font: 'Plus Jakarta Sans', 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --lf-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --lf-radius: 14px;
+    --lf-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 12px 32px -18px rgba(15, 23, 42, .28);
+}
+
+* { box-sizing: border-box; }
+
+body {
+    margin: 0;
+    font-family: var(--lf-font);
+    font-size: 16px;
+    line-height: 1.6;
+    color: var(--lf-body);
+    background:
+        radial-gradient(1200px 520px at 12% -8%, var(--lf-indigo-tint) 0%, rgba(245,246,255,0) 62%),
+        linear-gradient(180deg, var(--lf-surface) 0%, var(--lf-canvas) 100%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+}
+
+.lf-shell { max-width: 1120px; margin: 0 auto; padding: 0 28px 72px; }
+
+/* --- masthead --- */
+.lf-bar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 20px; padding: 22px 0 20px;
+    border-bottom: 1px solid var(--lf-line);
+}
+.lf-brand { display: flex; align-items: center; gap: 11px; }
+.lf-mark {
+    width: 30px; height: 30px; border-radius: 9px;
+    background: linear-gradient(160deg, var(--lf-indigo) 0%, var(--lf-indigo-deep) 100%);
+    display: grid; place-items: center; flex: none;
+}
+.lf-wordmark {
+    font-weight: 700; font-size: 17px; letter-spacing: -.015em; color: var(--lf-ink);
+}
+.lf-bar-meta {
+    font-size: 13px; color: var(--lf-muted); font-variant-numeric: tabular-nums;
+}
+
+/* --- hero --- */
+.lf-hero { padding: 60px 0 14px; max-width: 760px; }
+.lf-badge {
+    display: inline-block; padding: 6px 14px; border-radius: 999px;
+    background: var(--lf-indigo-soft); color: var(--lf-indigo-strong);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase;
+}
+h1 {
+    margin: 22px 0 0; font-size: clamp(34px, 5.2vw, 52px); line-height: 1.08;
+    letter-spacing: -.032em; font-weight: 800; color: var(--lf-ink);
+}
+.lf-lede { margin: 18px 0 0; font-size: 18px; max-width: 620px; }
+
+.lf-facts {
+    display: flex; flex-wrap: wrap; gap: 10px 26px;
+    margin-top: 30px; padding-top: 22px; border-top: 1px solid var(--lf-line);
+    font-size: 12px; letter-spacing: .07em; text-transform: uppercase;
+    font-weight: 600; color: var(--lf-muted);
+}
+.lf-facts b { color: var(--lf-ink-2); font-weight: 700; text-transform: none; letter-spacing: 0; }
+.lf-facts code { font-family: var(--lf-mono); font-size: 12px; text-transform: none; letter-spacing: 0; }
+
+/* --- sections --- */
+section { margin-top: 62px; }
+.lf-eyebrow {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .13em;
+    text-transform: uppercase; color: var(--lf-indigo-strong); margin: 0;
+}
+h2 {
+    margin: 12px 0 0; font-size: clamp(25px, 3.2vw, 33px); line-height: 1.16;
+    letter-spacing: -.024em; font-weight: 800; color: var(--lf-ink);
+}
+.lf-sub { margin: 12px 0 0; max-width: 640px; font-size: 15.5px; }
+
+/* --- KPI cards --- */
+.lf-kpis {
+    display: grid; gap: 16px; margin-top: 30px;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+}
+.lf-kpi {
+    background: var(--lf-surface); border: 1px solid var(--lf-line);
+    border-radius: var(--lf-radius); padding: 22px 22px 20px; box-shadow: var(--lf-shadow);
+}
+.lf-kpi .k {
+    font-size: 11.5px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--lf-muted);
+}
+.lf-kpi .v {
+    margin-top: 10px; font-size: 38px; line-height: 1; font-weight: 800;
+    letter-spacing: -.03em; color: var(--lf-ink); font-variant-numeric: tabular-nums;
+}
+.lf-kpi .n { margin-top: 9px; font-size: 13.5px; color: var(--lf-muted); }
+.lf-kpi.is-pass .v { color: var(--lf-pass); }
+.lf-kpi.is-fail .v { color: var(--lf-fail); }
+.lf-kpi.is-warn .v { color: var(--lf-warn); }
+
+/* --- tables --- */
+.lf-panel {
+    margin-top: 28px; background: var(--lf-surface); border: 1px solid var(--lf-line);
+    border-radius: var(--lf-radius); box-shadow: var(--lf-shadow); overflow: hidden;
+}
+.lf-scroll { overflow-x: auto; }
+table { width: 100%; border-collapse: collapse; font-size: 14.5px; }
+thead th {
+    text-align: left; padding: 14px 20px; background: var(--lf-canvas);
+    border-bottom: 1px solid var(--lf-line); color: var(--lf-muted);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .09em; text-transform: uppercase;
+    white-space: nowrap;
+}
+tbody td { padding: 14px 20px; border-bottom: 1px solid var(--lf-line-soft); vertical-align: middle; }
+tbody tr:last-child td { border-bottom: 0; }
+tbody tr:hover td { background: var(--lf-indigo-tint); }
+td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.name { font-family: var(--lf-mono); font-size: 13px; color: var(--lf-ink-2); white-space: nowrap; }
+
+.lf-pill {
+    display: inline-block; padding: 3px 10px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; letter-spacing: .01em; white-space: nowrap;
+}
+.lf-pill.pass { background: var(--lf-pass-soft); color: var(--lf-pass); }
+.lf-pill.fail { background: var(--lf-fail-soft); color: var(--lf-fail); }
+.lf-pill.warn { background: var(--lf-warn-soft); color: var(--lf-warn); }
+.lf-pill.info { background: var(--lf-indigo-soft); color: var(--lf-indigo-strong); }
+
+.lf-meter {
+    display: block; position: relative; width: 100%; min-width: 110px; height: 7px;
+    border-radius: 999px; background: var(--lf-line); overflow: hidden;
+}
+.lf-meter > i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; display: block; }
+.lf-meter > i.pass { background: var(--lf-pass); }
+.lf-meter > i.warn { background: var(--lf-warn); }
+.lf-meter > i.fail { background: var(--lf-fail); }
+.lf-meter > i.indigo { background: var(--lf-indigo); }
+
+/* --- mode comparison --- */
+.lf-modes { display: grid; gap: 16px; margin-top: 30px; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); }
+.lf-mode {
+    background: var(--lf-surface); border: 1px solid var(--lf-line);
+    border-radius: var(--lf-radius); padding: 24px; box-shadow: var(--lf-shadow);
+}
+.lf-mode.is-primary { border-color: var(--lf-indigo); box-shadow: 0 0 0 3px var(--lf-indigo-soft), var(--lf-shadow); }
+.lf-mode h3 { margin: 14px 0 0; font-size: 19px; letter-spacing: -.018em; color: var(--lf-ink); font-weight: 700; }
+.lf-mode p { margin: 10px 0 0; font-size: 14.5px; }
+.lf-mode dl { margin: 18px 0 0; display: grid; grid-template-columns: 1fr auto; gap: 9px 16px; font-size: 14px; }
+.lf-mode dt { color: var(--lf-muted); }
+.lf-mode dd { margin: 0; text-align: right; font-weight: 700; color: var(--lf-ink-2); font-variant-numeric: tabular-nums; }
+
+/* --- notes --- */
+.lf-note {
+    margin-top: 26px; padding: 20px 22px; border-radius: var(--lf-radius);
+    background: var(--lf-indigo-soft); border: 1px solid #DDE1FB; color: var(--lf-ink-2); font-size: 14.5px;
+}
+.lf-note strong { color: var(--lf-indigo-deep); }
+.lf-note code { font-family: var(--lf-mono); font-size: 13px; background: rgba(255,255,255,.7); padding: 1px 6px; border-radius: 5px; }
+
+.lf-fail-item { padding: 18px 20px; border-bottom: 1px solid var(--lf-line-soft); }
+.lf-fail-item:last-child { border-bottom: 0; }
+.lf-fail-item .t { font-family: var(--lf-mono); font-size: 13px; color: var(--lf-ink); }
+.lf-fail-item .m { margin-top: 7px; font-size: 13.5px; color: var(--lf-fail); font-family: var(--lf-mono); }
+
+footer {
+    margin-top: 68px; padding-top: 26px; border-top: 1px solid var(--lf-line);
+    font-size: 13px; color: var(--lf-faint);
+}
+footer b { color: var(--lf-muted); font-weight: 600; }
+
+@media (max-width: 640px) {
+    .lf-shell { padding: 0 18px 56px; }
+    .lf-hero { padding-top: 42px; }
+    .lf-bar { flex-wrap: wrap; }
+}
+@media print {
+    body { background: #fff; }
+    .lf-panel, .lf-kpi, .lf-mode { box-shadow: none; }
+    section { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+
+<div class="lf-shell">
+  <header class="lf-bar">
+    <div class="lf-brand">
+      <span class="lf-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5.2c0 4.4-2.9 8.2-7 9.4-4.1-1.2-7-5-7-9.4V6l7-3z" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.8 12.1l2.2 2.2 4.2-4.4" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="lf-wordmark">LinForensics</span>
+    </div>
+    <div class="lf-bar-meta">Generated 26 August 2026, 14:31 UTC</div>
+  </header>
+
+  <div class="lf-hero">
+    <span class="lf-badge">Automated test evidence</span>
+    <h1>Test &amp; coverage report</h1>
+    <p class="lf-lede">Every commit to the analysis engine is verified by a deterministic
+    suite that runs with no credentials, no network calls and no model spend. This is the
+    unedited output of that run.</p>
+    <div class="lf-facts"><span>Repository <b>MeLinResearch/Updgrade</b></span> <span>Commit <b>2626581</b></span> <span>Python <b>3.11.15</b></span> <span>Suite <b>300 tests</b></span></div>
+  </div>
+
+  <section>
+    <p class="lf-eyebrow">Summary</p>
+    <h2>Where the suite stands</h2>
+    <div class="lf-kpis">
+<div class="lf-kpi is-pass"><div class="k">Tests passed</div><div class="v">300</div><div class="n">of 300 collected · 100.0% pass rate</div></div>
+<div class="lf-kpi is-pass"><div class="k">Failures</div><div class="v">0</div><div class="n">no unresolved failures</div></div>
+<div class="lf-kpi is-pass"><div class="k">Statement coverage</div><div class="v">88%</div><div class="n">2,588 of 2,951 statements</div></div>
+<div class="lf-kpi"><div class="k">Wall clock</div><div class="v">6.2s</div><div class="n">across 31 test modules</div></div>
+</div>
+  </section>
+
+  <section>
+    <p class="lf-eyebrow">Run modes</p>
+    <h2>Two ways the suite was executed</h2>
+    <p class="lf-sub">The engine is designed so that its correctness can be demonstrated without
+    reaching a language model. Both runs below cover the identical 300 collected tests.</p>
+    <div class="lf-modes"><div class="lf-mode is-primary"><span class="lf-pill pass">All green</span><h3>Offline fixture mode</h3><p>The extractor is bound to a deterministic in-process stub through the repository&#x27;s own RUNNER_IMPORT_PATH hook. No API key, no network, no model spend.</p><dl><dt>Passed</dt><dd>300</dd><dt>Failed</dt><dd>0</dd><dt>Collected</dt><dd>300</dd><dt>Duration</dt><dd>6.23s</dd></dl></div><div class="lf-mode"><span class="lf-pill warn">8 environment-gated</span><h3>Bare sandbox, no credentials</h3><p>Identical suite with OPENAI_API_KEY unset and no runner override. The route tests that reach the live extractor cannot construct a client and fail at import of the dependency, not at an assertion.</p><dl><dt>Passed</dt><dd>292</dd><dt>Failed</dt><dd>8</dd><dt>Collected</dt><dd>300</dd><dt>Duration</dt><dd>16.42s</dd></dl></div></div>
+    <div class="lf-note"><strong>Why the two columns differ.</strong> 8 route tests exercise the PDF ingest path end to end, which resolves the extractor through <code>api_v1/runner_loader.py</code>. With no credentials present the default runner raises before any assertion runs. Pointing <code>RUNNER_IMPORT_PATH</code> at a deterministic stub satisfies the dependency and the same 8 tests pass unchanged — the suite has no real red.</div>
+  </section>
+
+  <section>
+    <p class="lf-eyebrow">Breakdown</p>
+    <h2>Results by test module</h2>
+    <p class="lf-sub">31 modules covering ingest normalisation, scoring,
+    convergence detection, entitlements, billing, chain of custody and report rendering.</p>
+    <div class="lf-panel"><div class="lf-scroll"><table><thead><tr><th>Test module</th><th>Status</th><th>Pass rate</th><th class="num">Cases</th><th class="num">Duration</th></tr></thead><tbody><tr><td class="name">test_api_audit_and_evidence.py</td><td><span class="lf-pill pass">4/4 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">4</td><td class="num">97 ms</td></tr><tr><td class="name">test_api_v1_demo_and_static.py</td><td><span class="lf-pill pass">3/3 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">3</td><td class="num">56 ms</td></tr><tr><td class="name">test_batch_processing.py</td><td><span class="lf-pill pass">10/10 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">10</td><td class="num">27 ms</td></tr><tr><td class="name">test_billing.py</td><td><span class="lf-pill pass">20/20 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">20</td><td class="num">156 ms</td></tr><tr><td class="name">test_chain_of_custody.py</td><td><span class="lf-pill pass">10/10 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">10</td><td class="num">10 ms</td></tr><tr><td class="name">test_convergence.py</td><td><span class="lf-pill pass">12/12 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">12</td><td class="num">18 ms</td></tr><tr><td class="name">test_cors_checkout.py</td><td><span class="lf-pill pass">4/4 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">4</td><td class="num">154 ms</td></tr><tr><td class="name">test_demo_api_fallback.py</td><td><span class="lf-pill pass">2/2 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">2</td><td class="num">24 ms</td></tr><tr><td class="name">test_doc_classifier.py</td><td><span class="lf-pill pass">15/15 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">15</td><td class="num">15 ms</td></tr><tr><td class="name">test_engine_scoring.py</td><td><span class="lf-pill pass">23/23 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">23</td><td class="num">38 ms</td></tr><tr><td class="name">test_entitlements.py</td><td><span class="lf-pill pass">10/10 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">10</td><td class="num">19 ms</td></tr><tr><td class="name">test_evidence_export.py</td><td><span class="lf-pill pass">13/13 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">13</td><td class="num">39 ms</td></tr><tr><td class="name">test_gpt_extract_prompt.py</td><td><span class="lf-pill pass">6/6 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">6</td><td class="num">10 ms</td></tr><tr><td class="name">test_ingest_normalizer.py</td><td><span class="lf-pill pass">17/17 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">17</td><td class="num">30 ms</td></tr><tr><td class="name">test_ingest_normalizer_pdf.py</td><td><span class="lf-pill pass">9/9 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">9</td><td class="num">18 ms</td></tr><tr><td class="name">test_legal_ingest_route.py</td><td><span class="lf-pill pass">8/8 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">8</td><td class="num">125 ms</td></tr><tr><td class="name">test_limits_enforcement.py</td><td><span class="lf-pill pass">3/3 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">3</td><td class="num">4 ms</td></tr><tr><td class="name">test_multi_party.py</td><td><span class="lf-pill pass">9/9 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">9</td><td class="num">18 ms</td></tr><tr><td class="name">test_pdf_ingest.py</td><td><span class="lf-pill pass">12/12 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">12</td><td class="num">192 ms</td></tr><tr><td class="name">test_production_docs_disabled.py</td><td><span class="lf-pill pass">3/3 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">3</td><td class="num">313 ms</td></tr><tr><td class="name">test_production_route_lockdown.py</td><td><span class="lf-pill pass">5/5 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">5</td><td class="num">460 ms</td></tr><tr><td class="name">test_render_public_report_v1.py</td><td><span class="lf-pill pass">8/8 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">8</td><td class="num">8 ms</td></tr><tr><td class="name">test_render_user_report_v1.py</td><td><span class="lf-pill pass">5/5 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">5</td><td class="num">5 ms</td></tr><tr><td class="name">test_report_auth.py</td><td><span class="lf-pill pass">15/15 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">15</td><td class="num">59 ms</td></tr><tr><td class="name">test_report_entitlement_enforcement.py</td><td><span class="lf-pill pass">10/10 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">10</td><td class="num">283 ms</td></tr><tr><td class="name">test_report_upload_route.py</td><td><span class="lf-pill pass">27/27 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">27</td><td class="num">827 ms</td></tr><tr><td class="name">test_run_case_debug_metrics.py</td><td><span class="lf-pill pass">7/7 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">7</td><td class="num">14 ms</td></tr><tr><td class="name">test_run_case_span_recovery.py</td><td><span class="lf-pill pass">2/2 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">2</td><td class="num">3 ms</td></tr><tr><td class="name">test_run_case_timestamp_regression.py</td><td><span class="lf-pill pass">5/5 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">5</td><td class="num">16 ms</td></tr><tr><td class="name">test_runner_loader.py</td><td><span class="lf-pill pass">4/4 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">4</td><td class="num">5 ms</td></tr><tr><td class="name">test_upload_validation.py</td><td><span class="lf-pill pass">19/19 passing</span></td><td style="min-width:160px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num">19</td><td class="num">159 ms</td></tr></tbody></table></div></div>
+  </section>
+
+  <section>
+    <p class="lf-eyebrow">Coverage</p>
+    <h2>Statement coverage by module</h2>
+    <p class="lf-sub">Overall statement coverage is 88% across
+    2,951 statements, sorted lowest first so the
+    thinnest areas surface at the top.</p>
+    <div class="lf-panel"><div class="lf-scroll"><table><thead><tr><th>Module</th><th>Coverage</th><th class="num">%</th><th class="num">Statements</th><th class="num">Uncovered</th></tr></thead><tbody><tr><td class="name">api_v1/routes/legal_ingest.py</td><td style="min-width:150px"><span class="lf-meter"><i class="warn" style="width:72.8%"></i></span></td><td class="num"><span class="lf-pill warn">73%</span></td><td class="num">147</td><td class="num">40</td></tr><tr><td class="name">api_v1/history.py</td><td style="min-width:150px"><span class="lf-meter"><i class="warn" style="width:77.3%"></i></span></td><td class="num"><span class="lf-pill warn">77%</span></td><td class="num">97</td><td class="num">22</td></tr><tr><td class="name">engine/ingest_normalizer_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="warn" style="width:78.4%"></i></span></td><td class="num"><span class="lf-pill warn">78%</span></td><td class="num">310</td><td class="num">67</td></tr><tr><td class="name">engine/pdf_ingest_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="warn" style="width:79.4%"></i></span></td><td class="num"><span class="lf-pill warn">79%</span></td><td class="num">34</td><td class="num">7</td></tr><tr><td class="name">engine/evidence_export_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="warn" style="width:80.8%"></i></span></td><td class="num"><span class="lf-pill warn">81%</span></td><td class="num">52</td><td class="num">10</td></tr><tr><td class="name">api_v1/app.py</td><td style="min-width:150px"><span class="lf-meter"><i class="warn" style="width:80.9%"></i></span></td><td class="num"><span class="lf-pill warn">81%</span></td><td class="num">283</td><td class="num">54</td></tr><tr><td class="name">api_v1/auth.py</td><td style="min-width:150px"><span class="lf-meter"><i class="warn" style="width:84.5%"></i></span></td><td class="num"><span class="lf-pill warn">85%</span></td><td class="num">84</td><td class="num">13</td></tr><tr><td class="name">engine/span_validate.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:85.7%"></i></span></td><td class="num"><span class="lf-pill pass">86%</span></td><td class="num">28</td><td class="num">4</td></tr><tr><td class="name">engine/tas_v1_1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:86.7%"></i></span></td><td class="num"><span class="lf-pill pass">87%</span></td><td class="num">362</td><td class="num">48</td></tr><tr><td class="name">api_v1/runner_loader.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:88.0%"></i></span></td><td class="num"><span class="lf-pill pass">88%</span></td><td class="num">25</td><td class="num">3</td></tr><tr><td class="name">api_v1/services/report_upload_parse.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:89.1%"></i></span></td><td class="num"><span class="lf-pill pass">89%</span></td><td class="num">92</td><td class="num">10</td></tr><tr><td class="name">engine/override_flags_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:89.7%"></i></span></td><td class="num"><span class="lf-pill pass">90%</span></td><td class="num">58</td><td class="num">6</td></tr><tr><td class="name">api_v1/routes/billing.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:89.9%"></i></span></td><td class="num"><span class="lf-pill pass">90%</span></td><td class="num">138</td><td class="num">14</td></tr><tr><td class="name">api_v1/entitlements.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:90.0%"></i></span></td><td class="num"><span class="lf-pill pass">90%</span></td><td class="num">110</td><td class="num">11</td></tr><tr><td class="name">engine/normalize_text.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:90.0%"></i></span></td><td class="num"><span class="lf-pill pass">90%</span></td><td class="num">10</td><td class="num">1</td></tr><tr><td class="name">api_v1/routes/report_upload.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:91.8%"></i></span></td><td class="num"><span class="lf-pill pass">92%</span></td><td class="num">158</td><td class="num">13</td></tr><tr><td class="name">api_v1/limits.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:92.0%"></i></span></td><td class="num"><span class="lf-pill pass">92%</span></td><td class="num">50</td><td class="num">4</td></tr><tr><td class="name">engine/gpt_extract_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:92.2%"></i></span></td><td class="num"><span class="lf-pill pass">92%</span></td><td class="num">51</td><td class="num">4</td></tr><tr><td class="name">api_v1/services/upload_validation.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:94.3%"></i></span></td><td class="num"><span class="lf-pill pass">94%</span></td><td class="num">70</td><td class="num">4</td></tr><tr><td class="name">engine/run_case_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:94.4%"></i></span></td><td class="num"><span class="lf-pill pass">94%</span></td><td class="num">248</td><td class="num">14</td></tr><tr><td class="name">engine/render_public_report_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:95.0%"></i></span></td><td class="num"><span class="lf-pill pass">95%</span></td><td class="num">60</td><td class="num">3</td></tr><tr><td class="name">engine/batch_processor_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:95.7%"></i></span></td><td class="num"><span class="lf-pill pass">96%</span></td><td class="num">46</td><td class="num">2</td></tr><tr><td class="name">engine/convergence_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:95.9%"></i></span></td><td class="num"><span class="lf-pill pass">96%</span></td><td class="num">98</td><td class="num">4</td></tr><tr><td class="name">engine/boundary_detector_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:96.1%"></i></span></td><td class="num"><span class="lf-pill pass">96%</span></td><td class="num">51</td><td class="num">2</td></tr><tr><td class="name">api/main.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:96.4%"></i></span></td><td class="num"><span class="lf-pill pass">96%</span></td><td class="num">56</td><td class="num">2</td></tr><tr><td class="name">engine/render_user_report_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:98.8%"></i></span></td><td class="num"><span class="lf-pill pass">99%</span></td><td class="num">80</td><td class="num">1</td></tr><tr><td class="name">api_v1/models.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">51</td><td class="num">0</td></tr><tr><td class="name">api_v1/audit_store.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">27</td><td class="num">0</td></tr><tr><td class="name">api_v1/schemas.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">23</td><td class="num">0</td></tr><tr><td class="name">api_v1/extraction/interface.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">20</td><td class="num">0</td></tr><tr><td class="name">engine/doc_classifier_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">13</td><td class="num">0</td></tr><tr><td class="name">engine/config.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">7</td><td class="num">0</td></tr><tr><td class="name">engine/chain_of_custody_v1.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">6</td><td class="num">0</td></tr><tr><td class="name">api_v1/timeutil.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">4</td><td class="num">0</td></tr><tr><td class="name">api_v1/extraction/__init__.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">2</td><td class="num">0</td></tr><tr><td class="name">api_v1/__init__.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">0</td><td class="num">0</td></tr><tr><td class="name">api_v1/routes/__init__.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">0</td><td class="num">0</td></tr><tr><td class="name">api_v1/services/__init__.py</td><td style="min-width:150px"><span class="lf-meter"><i class="pass" style="width:100.0%"></i></span></td><td class="num"><span class="lf-pill pass">100%</span></td><td class="num">0</td><td class="num">0</td></tr></tbody></table></div></div>
+  </section>
+
+  
+
+  <footer>
+    <p><b>Provenance.</b> Produced by <code>reports/generate_test_report.py</code> from the
+    machine-readable pytest and coverage output of a single run. No figure on this page is
+    entered by hand.</p>
+    <p>LinForensics is decision-support software. It does not provide legal advice, medical
+    advice, mental health advice, diagnoses, predictions, emergency support or automated
+    determinations.</p>
+  </footer>
+</div>
+</body>
+</html>

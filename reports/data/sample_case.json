@@ -1,0 +1,514 @@
+{
+  "case_result": {
+    "score_total": 10.393600000000001,
+    "tier_internal": "D",
+    "tier_public": "Orange",
+    "override_triggered": "none",
+    "long_window_pattern_detected": false,
+    "long_window_domains": [],
+    "long_window_pattern_strength": null,
+    "long_window_supporting_events": 0,
+    "long_window_gap_pattern": false,
+    "record_completeness_unverified": true,
+    "record_fragmentation_risk": "moderate",
+    "override_decision": {
+      "override_triggered": "none",
+      "matched_rule": null,
+      "reason": "no_override_conditions_met",
+      "supporting_instance_ids": [],
+      "details": {
+        "matched_cue_rule_ids_by_instance": {
+          "adce88dadf8b886461760e82": [],
+          "bd64b2d1b7749f868db373f3": [],
+          "e6d216b0dddeaefc92601270": [],
+          "2eb42f8ca7dd9b545d3ecc85": [],
+          "170711d206eac10e066f6dab": [],
+          "5e28caeea71a4a6113b0ce47": []
+        }
+      }
+    },
+    "multi_actor_convergence": false,
+    "convergence_detail": null,
+    "attachment_refs": {},
+    "provenance": {
+      "upload_time": "2026-02-18T08:57:12+00:00",
+      "source_filename": "whatsapp-export-2026-02-18.txt",
+      "analysis_run_id": "run-9f2c41d8",
+      "model_used": "gpt-4.1-mini",
+      "taxonomy_version": "LIN-TAXONOMY-v0.6",
+      "scoring_version": "TAS-v1.1",
+      "parser_version": "ingest-normalizer-v1.0"
+    },
+    "audit": {
+      "status": "ok",
+      "reason": null,
+      "details": {},
+      "normalization": {
+        "m01": {
+          "normalization_version": "normalize-text-v1",
+          "length": 129
+        },
+        "m02": {
+          "normalization_version": "normalize-text-v1",
+          "length": 52
+        },
+        "m03": {
+          "normalization_version": "normalize-text-v1",
+          "length": 164
+        },
+        "m04": {
+          "normalization_version": "normalize-text-v1",
+          "length": 113
+        },
+        "m05": {
+          "normalization_version": "normalize-text-v1",
+          "length": 48
+        },
+        "m06": {
+          "normalization_version": "normalize-text-v1",
+          "length": 89
+        },
+        "m07": {
+          "normalization_version": "normalize-text-v1",
+          "length": 169
+        },
+        "m08": {
+          "normalization_version": "normalize-text-v1",
+          "length": 66
+        }
+      },
+      "span_validation": {
+        "invalid_instances": [],
+        "invalid_spans": []
+      },
+      "boundary": {
+        "audit": {
+          "detector_version": "boundary-detector-v1.0",
+          "matched_patterns": [],
+          "degradation": []
+        },
+        "events": []
+      },
+      "override": {
+        "extractor_version": "override-flags-v1.0",
+        "cue_artifact_version": "override-flags-cues-v1.0",
+        "matched_cue_rule_ids_by_instance": {
+          "adce88dadf8b886461760e82": [],
+          "bd64b2d1b7749f868db373f3": [],
+          "e6d216b0dddeaefc92601270": [],
+          "2eb42f8ca7dd9b545d3ecc85": [],
+          "170711d206eac10e066f6dab": [],
+          "5e28caeea71a4a6113b0ce47": []
+        },
+        "cue_matches": []
+      },
+      "override_decision": {
+        "override_triggered": "none",
+        "matched_rule": null,
+        "reason": "no_override_conditions_met",
+        "supporting_instance_ids": [],
+        "details": {
+          "matched_cue_rule_ids_by_instance": {
+            "adce88dadf8b886461760e82": [],
+            "bd64b2d1b7749f868db373f3": [],
+            "e6d216b0dddeaefc92601270": [],
+            "2eb42f8ca7dd9b545d3ecc85": [],
+            "170711d206eac10e066f6dab": [],
+            "5e28caeea71a4a6113b0ce47": []
+          }
+        }
+      },
+      "versions": {
+        "taxonomy_version": "LIN-TAXONOMY-v0.6",
+        "scoring_spec_version": "TAS-v1.1",
+        "severity_table_version": "severity-table-v1.0",
+        "boundary_detector_version": "boundary-detector-v1.0",
+        "override_flags_version": "override-flags-v1.0"
+      },
+      "scoring": {
+        "now": "2026-02-18T09:00:00+00:00",
+        "counts": {
+          "instances": 6,
+          "boundary_events": 0
+        },
+        "family_presence_F": 5,
+        "cluster_multiplier_M": 1.45,
+        "score_raw": 7.168000000000001,
+        "score_total": 10.393600000000001,
+        "override_triggered": "none",
+        "instances": [
+          {
+            "instance_id": "adce88dadf8b886461760e82",
+            "label_code": "PA1",
+            "message_id": "m01",
+            "timestamp": "2026-02-11T20:14:00+00:00",
+            "severity": "Low",
+            "confidence": 0.9,
+            "after_boundary": false,
+            "score_uncapped": 0.7200000000000001,
+            "score_capped": 0.7200000000000001,
+            "timestamp_missing": false,
+            "timestamp_invalid": false,
+            "speaker_id": "sp-a",
+            "speaker_label": "Contact (unverified)",
+            "scoring_excluded": false,
+            "scoring_exclusion_reason": null,
+            "duplicate_for_scoring": null,
+            "duplicate_reason": null,
+            "evidence_spans": [
+              {
+                "quote_text": "I have never felt this connected to anyone",
+                "start_idx": 45,
+                "end_idx": 87,
+                "message_id": "m01",
+                "speaker_id": "sp-a",
+                "speaker_label": "Contact (unverified)"
+              }
+            ]
+          },
+          {
+            "instance_id": "bd64b2d1b7749f868db373f3",
+            "label_code": "SE5",
+            "message_id": "m03",
+            "timestamp": "2026-02-12T23:47:00+00:00",
+            "severity": "Medium",
+            "confidence": 0.88,
+            "after_boundary": false,
+            "score_uncapped": 1.4080000000000001,
+            "score_capped": 1.4080000000000001,
+            "timestamp_missing": false,
+            "timestamp_invalid": false,
+            "speaker_id": "sp-a",
+            "speaker_label": "Contact (unverified)",
+            "scoring_excluded": false,
+            "scoring_exclusion_reason": null,
+            "duplicate_for_scoring": null,
+            "duplicate_reason": null,
+            "evidence_spans": [
+              {
+                "quote_text": "I run a private commodities desk in Geneva",
+                "start_idx": 0,
+                "end_idx": 42,
+                "message_id": "m03",
+                "speaker_id": "sp-a",
+                "speaker_label": "Contact (unverified)"
+              }
+            ]
+          },
+          {
+            "instance_id": "e6d216b0dddeaefc92601270",
+            "label_code": "BD4",
+            "message_id": "m04",
+            "timestamp": "2026-02-14T01:12:00+00:00",
+            "severity": "Medium",
+            "confidence": 0.9,
+            "after_boundary": false,
+            "score_uncapped": 1.4400000000000002,
+            "score_capped": 1.4400000000000002,
+            "timestamp_missing": false,
+            "timestamp_invalid": false,
+            "speaker_id": "sp-a",
+            "speaker_label": "Contact (unverified)",
+            "scoring_excluded": false,
+            "scoring_exclusion_reason": null,
+            "duplicate_for_scoring": null,
+            "duplicate_reason": null,
+            "evidence_spans": [
+              {
+                "quote_text": "Please don't tell your friends about us yet",
+                "start_idx": 0,
+                "end_idx": 43,
+                "message_id": "m04",
+                "speaker_id": "sp-a",
+                "speaker_label": "Contact (unverified)"
+              }
+            ]
+          },
+          {
+            "instance_id": "2eb42f8ca7dd9b545d3ecc85",
+            "label_code": "GS1",
+            "message_id": "m06",
+            "timestamp": "2026-02-16T03:02:00+00:00",
+            "severity": "Low",
+            "confidence": 0.9,
+            "after_boundary": false,
+            "score_uncapped": 0.7200000000000001,
+            "score_capped": 0.7200000000000001,
+            "timestamp_missing": false,
+            "timestamp_invalid": false,
+            "speaker_id": "sp-a",
+            "speaker_label": "Contact (unverified)",
+            "scoring_excluded": false,
+            "scoring_exclusion_reason": null,
+            "duplicate_for_scoring": null,
+            "duplicate_reason": null,
+            "evidence_spans": [
+              {
+                "quote_text": "If you actually cared about me you would not be making this so difficult",
+                "start_idx": 0,
+                "end_idx": 72,
+                "message_id": "m06",
+                "speaker_id": "sp-a",
+                "speaker_label": "Contact (unverified)"
+              }
+            ]
+          },
+          {
+            "instance_id": "170711d206eac10e066f6dab",
+            "label_code": "FR3",
+            "message_id": "m07",
+            "timestamp": "2026-02-18T04:41:00+00:00",
+            "severity": "Medium",
+            "confidence": 0.9,
+            "after_boundary": false,
+            "score_uncapped": 1.4400000000000002,
+            "score_capped": 1.4400000000000002,
+            "timestamp_missing": false,
+            "timestamp_invalid": false,
+            "speaker_id": "sp-a",
+            "speaker_label": "Contact (unverified)",
+            "scoring_excluded": false,
+            "scoring_exclusion_reason": null,
+            "duplicate_for_scoring": null,
+            "duplicate_reason": null,
+            "evidence_spans": [
+              {
+                "quote_text": "I need you to send 4,000 now or I lose the whole position",
+                "start_idx": 75,
+                "end_idx": 132,
+                "message_id": "m07",
+                "speaker_id": "sp-a",
+                "speaker_label": "Contact (unverified)"
+              }
+            ]
+          },
+          {
+            "instance_id": "5e28caeea71a4a6113b0ce47",
+            "label_code": "PA2",
+            "message_id": "m07",
+            "timestamp": "2026-02-18T04:41:00+00:00",
+            "severity": "Medium",
+            "confidence": 0.9,
+            "after_boundary": false,
+            "score_uncapped": 1.4400000000000002,
+            "score_capped": 1.4400000000000002,
+            "timestamp_missing": false,
+            "timestamp_invalid": false,
+            "speaker_id": "sp-a",
+            "speaker_label": "Contact (unverified)",
+            "scoring_excluded": false,
+            "scoring_exclusion_reason": null,
+            "duplicate_for_scoring": null,
+            "duplicate_reason": null,
+            "evidence_spans": [
+              {
+                "quote_text": "There is no time to think about it",
+                "start_idx": 134,
+                "end_idx": 168,
+                "message_id": "m07",
+                "speaker_id": "sp-a",
+                "speaker_label": "Contact (unverified)"
+              }
+            ]
+          }
+        ],
+        "versions": {
+          "severity_table": "severity-table-v1.0",
+          "scoring_spec": "TAS-v1.1"
+        },
+        "pro_mitigation": {
+          "pro_signal_present": false,
+          "pro_signal_valid_for_mitigation": false,
+          "pro_invalidity_reason": [],
+          "pro_mitigation_suppressed": false,
+          "pro_suppression_reason": [],
+          "retracted_threat_preserved_coercive_effect": false,
+          "threat_recant_cycles": [],
+          "cross_channel_underlinked": true,
+          "T_recant_immediate_minutes": 10,
+          "T_pro_contaminated_hours": 24
+        },
+        "long_window": {
+          "long_window_pattern_detected": false,
+          "long_window_domains": [],
+          "long_window_pattern_strength": null,
+          "long_window_supporting_events": 0,
+          "long_window_gap_pattern": false
+        },
+        "record_completeness_unverified": true,
+        "record_fragmentation_risk": "moderate",
+        "scoring_window": {
+          "days": 14,
+          "max_messages": 40,
+          "included_message_ids": [
+            "m01",
+            "m02",
+            "m03",
+            "m04",
+            "m05",
+            "m06",
+            "m07",
+            "m08"
+          ],
+          "excluded_message_ids": [],
+          "excluded_instance_ids": []
+        }
+      }
+    }
+  },
+  "public_report": {
+    "report_type": "public_customer_report",
+    "version": "public-report-v1",
+    "summary": {
+      "overall_level": "Moderate concern",
+      "plain_language_summary": "Overall pattern review indicates moderate concern. Human review is recommended for context-aware interpretation.",
+      "human_review_required": true
+    },
+    "pattern_groups": [
+      {
+        "public_category": "Pressure or obligation language",
+        "description": "Language that may apply guilt, obligation, shame, or responsibility pressure.",
+        "examples": [
+          {
+            "quote_text": "I have never felt this connected to anyone",
+            "speaker_label": "Contact (unverified)",
+            "message_id": "m01",
+            "timestamp": "2026-02-11T20:14:00+00:00"
+          },
+          {
+            "quote_text": "If you actually cared about me you would not be making this so difficult",
+            "speaker_label": "Contact (unverified)",
+            "message_id": "m06",
+            "timestamp": "2026-02-16T03:02:00+00:00"
+          },
+          {
+            "quote_text": "I need you to send 4,000 now or I lose the whole position",
+            "speaker_label": "Contact (unverified)",
+            "message_id": "m07",
+            "timestamp": "2026-02-18T04:41:00+00:00"
+          },
+          {
+            "quote_text": "There is no time to think about it",
+            "speaker_label": "Contact (unverified)",
+            "message_id": "m07",
+            "timestamp": "2026-02-18T04:41:00+00:00"
+          }
+        ]
+      },
+      {
+        "public_category": "Restriction or separation language",
+        "description": "Language suggesting isolation, separation, access limits, or control-like restriction.",
+        "examples": [
+          {
+            "quote_text": "Please don't tell your friends about us yet",
+            "speaker_label": "Contact (unverified)",
+            "message_id": "m04",
+            "timestamp": "2026-02-14T01:12:00+00:00"
+          }
+        ]
+      },
+      {
+        "public_category": "Monitoring or compliance pressure",
+        "description": "Language emphasizing surveillance, proof demands, tracking, or compliance checks.",
+        "examples": [
+          {
+            "quote_text": "I run a private commodities desk in Geneva",
+            "speaker_label": "Contact (unverified)",
+            "message_id": "m03",
+            "timestamp": "2026-02-12T23:47:00+00:00"
+          }
+        ]
+      }
+    ],
+    "limitations": [
+      "This summary is generated from submitted content and may miss context outside the provided material.",
+      "Detected patterns are communication indicators, not factual findings or intent determinations."
+    ],
+    "disclaimer": "Lin is decision-support software. It does not provide legal advice, medical advice, mental health advice, diagnoses, predictions, emergency support, or automated determinations."
+  },
+  "user_report": {
+    "headline": "Risk level: Orange",
+    "signals": [
+      "Overall category is Orange. Score: 10.394. No urgent override triggers were detected.",
+      "Triggered signals:",
+      "PA1 - Rapid Intimacy. Triggered by: 'I have never felt this connected to anyone'. What this means: accelerates closeness before normal trust is established.",
+      "SE5 - Too Good To Be True. Triggered by: 'I run a private commodities desk in Geneva'. What this means: pairs improbable claims with compliance requests.",
+      "BD4 - Isolation Suggestion. Triggered by: 'Please don't tell your friends about us yet'. What this means: discourages outside input or support.",
+      "GS1 - Guilt Hook. Triggered by: 'If you actually cared about me you would not be making this so difficult'. What this means: frames compliance as proof of care.",
+      "FR3 - Crisis Spend. Triggered by: 'I need you to send 4,000 now or I lose the whole position'. What this means: uses emergency framing to demand immediate money.",
+      "PA2 - Time Compression. Triggered by: 'There is no time to think about it'. What this means: uses urgency or artificial deadlines to force speed."
+    ],
+    "next_steps": [
+      "Pause escalation and use calm, non-confrontational communication.",
+      "Move sensitive decisions to a supervised or documented channel."
+    ],
+    "disclaimer": "Based on submitted content only."
+  },
+  "legal_report": "BD4 - Isolation Suggestion\n- BD4 (speaker=Contact (unverified), time=2026-02-14T01:12:00+00:00, quotes='Please don't tell your friends about us yet')\n\nFR3 - Crisis Spend\n- FR3 (speaker=Contact (unverified), time=2026-02-18T04:41:00+00:00, quotes='I need you to send 4,000 now or I lose the whole position')\n\nGS1 - Guilt Hook\n- GS1 (speaker=Contact (unverified), time=2026-02-16T03:02:00+00:00, quotes='If you actually cared about me you would not be making this so difficult')\n\nPA1 - Rapid Intimacy\n- PA1 (speaker=Contact (unverified), time=2026-02-11T20:14:00+00:00, quotes='I have never felt this connected to anyone')\n\nPA2 - Time Compression\n- PA2 (speaker=Contact (unverified), time=2026-02-18T04:41:00+00:00, quotes='There is no time to think about it')\n\nSE5 - Too Good To Be True\n- SE5 (speaker=Contact (unverified), time=2026-02-12T23:47:00+00:00, quotes='I run a private commodities desk in Geneva')",
+  "transcript": [
+    {
+      "message_id": "m01",
+      "thread_id": "lf-2026-0184",
+      "timestamp": "2026-02-11T20:14:00+00:00",
+      "speaker_id": "sp-a",
+      "speaker_label": "Contact (unverified)",
+      "text": "I know we only started talking last week but I have never felt this connected to anyone. You are my soulmate, I am certain of it."
+    },
+    {
+      "message_id": "m02",
+      "thread_id": "lf-2026-0184",
+      "timestamp": "2026-02-11T20:31:00+00:00",
+      "speaker_id": "sp-b",
+      "speaker_label": "Submitting party",
+      "text": "That's a lot, honestly. I'd rather take this slowly."
+    },
+    {
+      "message_id": "m03",
+      "thread_id": "lf-2026-0184",
+      "timestamp": "2026-02-12T23:47:00+00:00",
+      "speaker_id": "sp-a",
+      "speaker_label": "Contact (unverified)",
+      "text": "I run a private commodities desk in Geneva and I clear more in a quarter than most people see in a decade. I am telling you this because I want to take care of you."
+    },
+    {
+      "message_id": "m04",
+      "thread_id": "lf-2026-0184",
+      "timestamp": "2026-02-14T01:12:00+00:00",
+      "speaker_id": "sp-a",
+      "speaker_label": "Contact (unverified)",
+      "text": "Please don't tell your friends about us yet. They will talk you out of it and they don't understand what we have."
+    },
+    {
+      "message_id": "m05",
+      "thread_id": "lf-2026-0184",
+      "timestamp": "2026-02-14T01:20:00+00:00",
+      "speaker_id": "sp-b",
+      "speaker_label": "Submitting party",
+      "text": "I'm not comfortable keeping this from my sister."
+    },
+    {
+      "message_id": "m06",
+      "thread_id": "lf-2026-0184",
+      "timestamp": "2026-02-16T03:02:00+00:00",
+      "speaker_id": "sp-a",
+      "speaker_label": "Contact (unverified)",
+      "text": "If you actually cared about me you would not be making this so difficult. Prove it to me."
+    },
+    {
+      "message_id": "m07",
+      "thread_id": "lf-2026-0184",
+      "timestamp": "2026-02-18T04:41:00+00:00",
+      "speaker_id": "sp-a",
+      "speaker_label": "Contact (unverified)",
+      "text": "My accounts are frozen at the airport and my flight leaves in three hours. I need you to send 4,000 now or I lose the whole position. There is no time to think about it."
+    },
+    {
+      "message_id": "m08",
+      "thread_id": "lf-2026-0184",
+      "timestamp": "2026-02-18T04:55:00+00:00",
+      "speaker_id": "sp-b",
+      "speaker_label": "Submitting party",
+      "text": "I want to stop and check this with someone before I send anything."
+    }
+  ]
+}
