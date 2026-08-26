@@ -1,0 +1,276 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LinForensics sample report</title>
+<meta name="description" content="A complete example of a LinForensics communication pattern report.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+    color-scheme: light;
+    --lf-indigo: #4F46E5;
+    --lf-indigo-strong: #4338CA;
+    --lf-indigo-deep: #3730A3;
+    --lf-indigo-soft: #EEF2FF;
+    --lf-indigo-tint: #F5F6FF;
+    --lf-indigo-line: #DDE1FB;
+    --lf-ink: #0B1220;
+    --lf-ink-2: #1E293B;
+    --lf-body: #475569;
+    --lf-muted: #64748B;
+    --lf-faint: #94A3B8;
+    --lf-line: #E2E8F0;
+    --lf-line-soft: #EFF2F7;
+    --lf-surface: #FFFFFF;
+    --lf-canvas: #F8FAFC;
+    --lf-pass: #0E9F6E;
+    --lf-pass-soft: #E7F7F1;
+    --lf-warn: #B45309;
+    --lf-warn-soft: #FDF3E3;
+    --lf-warn-line: #F3DFBC;
+    --lf-fail: #DC2626;
+    --lf-fail-soft: #FEECEC;
+    --lf-fail-line: #F8D4D4;
+    --lf-font: 'Plus Jakarta Sans', 'Figtree', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    --lf-mono: 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    --lf-radius: 14px;
+    --lf-shadow: 0 1px 2px rgba(15, 23, 42, .04), 0 12px 32px -18px rgba(15, 23, 42, .28);
+    --lf-doc-shadow: 0 1px 3px rgba(15, 23, 42, .05), 0 28px 60px -28px rgba(15, 23, 42, .34);
+}
+* { box-sizing: border-box; }
+body {
+    margin: 0; font-family: var(--lf-font); font-size: 16px; line-height: 1.6;
+    color: var(--lf-body);
+    background:
+        radial-gradient(1100px 480px at 14% -10%, var(--lf-indigo-tint) 0%, rgba(245,246,255,0) 60%),
+        linear-gradient(180deg, var(--lf-surface) 0%, var(--lf-canvas) 100%);
+    background-attachment: fixed;
+    -webkit-font-smoothing: antialiased;
+}
+.lf-shell { max-width: 1240px; margin: 0 auto; padding: 0 28px 84px; }
+
+/* masthead */
+.lf-bar {
+    display: flex; align-items: center; justify-content: space-between; gap: 20px;
+    padding: 22px 0 20px; border-bottom: 1px solid var(--lf-line);
+}
+.lf-brand { display: flex; align-items: center; gap: 11px; }
+.lf-mark {
+    width: 30px; height: 30px; border-radius: 9px; flex: none; display: grid; place-items: center;
+    background: linear-gradient(160deg, var(--lf-indigo) 0%, var(--lf-indigo-deep) 100%);
+}
+.lf-wordmark { font-weight: 700; font-size: 17px; letter-spacing: -.015em; color: var(--lf-ink); }
+.lf-bar-meta { font-size: 13px; color: var(--lf-muted); }
+
+/* intro */
+.lf-intro { padding: 58px 0 8px; max-width: 720px; }
+.lf-badge {
+    display: inline-block; padding: 6px 14px; border-radius: 999px;
+    background: var(--lf-indigo-soft); color: var(--lf-indigo-strong);
+    font-size: 11.5px; font-weight: 700; letter-spacing: .11em; text-transform: uppercase;
+}
+h1 {
+    margin: 22px 0 0; font-size: clamp(33px, 5vw, 50px); line-height: 1.08;
+    letter-spacing: -.032em; font-weight: 800; color: var(--lf-ink);
+}
+.lf-lede { margin: 18px 0 0; font-size: 18px; max-width: 640px; }
+
+/* --- the report document --- */
+.lf-doc {
+    background: var(--lf-surface); border: 1px solid var(--lf-line);
+    border-radius: 18px; box-shadow: var(--lf-doc-shadow); overflow: hidden;
+}
+.lf-doc-head {
+    display: flex; align-items: flex-start; justify-content: space-between; gap: 20px;
+    padding: 26px 32px; border-bottom: 1px solid var(--lf-line); background: var(--lf-surface);
+}
+.lf-doc-title { font-size: 19px; font-weight: 800; letter-spacing: -.02em; color: var(--lf-ink); }
+.lf-doc-sub { margin-top: 4px; font-size: 13px; color: var(--lf-muted); }
+.lf-doc-ref {
+    text-align: right; font-family: var(--lf-mono); font-size: 12px;
+    color: var(--lf-muted); line-height: 1.7; white-space: nowrap;
+}
+.lf-doc-body { padding: 30px 32px 34px; }
+.lf-doc h3 {
+    margin: 0 0 4px; font-size: 11.5px; font-weight: 700; letter-spacing: .12em;
+    text-transform: uppercase; color: var(--lf-indigo-strong);
+}
+.lf-block + .lf-block { margin-top: 30px; padding-top: 30px; border-top: 1px solid var(--lf-line-soft); }
+
+/* level band */
+.lf-level {
+    display: flex; align-items: center; gap: 16px; flex-wrap: wrap;
+    padding: 20px 22px; border-radius: var(--lf-radius);
+    background: var(--lf-warn-soft); border: 1px solid var(--lf-warn-line);
+}
+.lf-level.tone-fail { background: var(--lf-fail-soft); border-color: var(--lf-fail-line); }
+.lf-level.tone-pass { background: var(--lf-pass-soft); border-color: #CDEBE0; }
+.lf-level.tone-muted { background: var(--lf-canvas); border-color: var(--lf-line); }
+.lf-level-dot { width: 11px; height: 11px; border-radius: 50%; background: var(--lf-warn); flex: none; }
+.lf-level.tone-fail .lf-level-dot { background: var(--lf-fail); }
+.lf-level.tone-pass .lf-level-dot { background: var(--lf-pass); }
+.lf-level.tone-muted .lf-level-dot { background: var(--lf-faint); }
+.lf-level-name {
+    font-size: 23px; font-weight: 800; letter-spacing: -.022em; color: var(--lf-ink); line-height: 1.2;
+}
+.lf-level-tag {
+    margin-left: auto; padding: 5px 12px; border-radius: 999px; background: rgba(255,255,255,.75);
+    font-size: 12px; font-weight: 700; color: var(--lf-ink-2); white-space: nowrap;
+}
+.lf-summary { margin: 16px 0 0; font-size: 16px; color: var(--lf-ink-2); max-width: 62ch; }
+
+/* provenance */
+.lf-prov {
+    display: grid; gap: 14px 26px; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    padding: 18px 20px; border: 1px dashed var(--lf-line); border-radius: var(--lf-radius);
+    background: var(--lf-canvas);
+}
+.lf-prov dt {
+    font-size: 10.5px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--lf-muted);
+}
+.lf-prov dd {
+    margin: 5px 0 0; font-family: var(--lf-mono); font-size: 12.5px;
+    color: var(--lf-ink-2); word-break: break-word;
+}
+
+/* pattern groups */
+.lf-group + .lf-group { margin-top: 22px; }
+.lf-group-name { font-size: 17px; font-weight: 700; letter-spacing: -.015em; color: var(--lf-ink); }
+.lf-group-desc { margin: 5px 0 0; font-size: 14.5px; color: var(--lf-muted); max-width: 64ch; }
+.lf-group-count {
+    display: inline-block; margin-left: 9px; padding: 2px 9px; border-radius: 999px;
+    background: var(--lf-indigo-soft); color: var(--lf-indigo-strong);
+    font-size: 11.5px; font-weight: 700; vertical-align: 2px;
+}
+.lf-quotes { margin: 15px 0 0; padding: 0; list-style: none; }
+.lf-quotes li {
+    padding: 13px 16px; border-left: 3px solid var(--lf-indigo);
+    background: var(--lf-indigo-tint); border-radius: 0 10px 10px 0;
+}
+.lf-quotes li + li { margin-top: 9px; }
+.lf-quote { font-size: 15px; color: var(--lf-ink); }
+.lf-quote-meta {
+    margin-top: 7px; font-size: 12px; color: var(--lf-muted);
+    display: flex; flex-wrap: wrap; gap: 4px 14px;
+}
+.lf-quote-meta code { font-family: var(--lf-mono); font-size: 11.5px; }
+
+/* steps + limits */
+.lf-steps { margin: 14px 0 0; padding: 0; list-style: none; counter-reset: step; }
+.lf-steps li {
+    position: relative; padding-left: 34px; font-size: 15.5px; color: var(--lf-ink-2);
+    counter-increment: step;
+}
+.lf-steps li + li { margin-top: 11px; }
+.lf-steps li::before {
+    content: counter(step); position: absolute; left: 0; top: 1px;
+    width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center;
+    background: var(--lf-indigo-soft); color: var(--lf-indigo-strong);
+    font-size: 12px; font-weight: 700;
+}
+.lf-limits { margin: 14px 0 0; padding-left: 20px; font-size: 14.5px; }
+.lf-limits li + li { margin-top: 7px; }
+.lf-disclaimer {
+    margin: 18px 0 0; padding: 16px 18px; border-radius: var(--lf-radius);
+    background: var(--lf-canvas); border: 1px solid var(--lf-line);
+    font-size: 13.5px; color: var(--lf-muted);
+}
+footer {
+    margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--lf-line);
+    font-size: 13px; color: var(--lf-faint);
+}
+@media (max-width: 720px) {
+    .lf-shell { padding: 0 16px 60px; }
+    .lf-doc-head, .lf-doc-body { padding-left: 20px; padding-right: 20px; }
+    .lf-doc-head { flex-direction: column; }
+    .lf-doc-ref { text-align: left; }
+}
+@media print {
+    body { background: #fff; }
+    .lf-doc { box-shadow: none; }
+}
+
+.lf-stage { max-width: 860px; margin: 40px auto 0; }
+</style>
+</head>
+<body>
+<div class="lf-shell">
+  <header class="lf-bar">
+    <div class="lf-brand">
+      <span class="lf-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5.2c0 4.4-2.9 8.2-7 9.4-4.1-1.2-7-5-7-9.4V6l7-3z" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.8 12.1l2.2 2.2 4.2-4.4" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+      <span class="lf-wordmark">LinForensics</span>
+    </div>
+    <div class="lf-bar-meta">Sample &middot; 26 August 2026</div>
+  </header>
+
+  <div class="lf-intro">
+    <span class="lf-badge">Sample deliverable</span>
+    <h1>Sample report</h1>
+    <p class="lf-lede">A complete example of the report produced for a submitted conversation. The content below is synthetic; the structure, wording and analysis are the live product.</p>
+  </div>
+
+  <div class="lf-stage">
+<article class="lf-doc">
+  <div class="lf-doc-head">
+    <div>
+      <div class="lf-brand" style="margin-bottom:12px">
+        <span class="lf-mark"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 3l7 3v5.2c0 4.4-2.9 8.2-7 9.4-4.1-1.2-7-5-7-9.4V6l7-3z" fill="rgba(255,255,255,.16)" stroke="#fff" stroke-width="1.7" stroke-linejoin="round"/><path d="M8.8 12.1l2.2 2.2 4.2-4.4" stroke="#fff" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"/></svg></span>
+        <span class="lf-wordmark">LinForensics</span>
+      </div>
+      <div class="lf-doc-title">Communication pattern review</div>
+      <div class="lf-doc-sub">Structured report prepared for independent human review</div>
+    </div>
+    <div class="lf-doc-ref">
+      Case&nbsp;LF-2026-0184<br>
+      18 Feb 2026, 08:57<br>
+      public-report-v1
+    </div>
+  </div>
+
+  <div class="lf-doc-body">
+    <div class="lf-block">
+      <h3>Overall assessment</h3>
+      <div class="lf-level tone-warn" id="a-level">
+        <span class="lf-level-dot"></span>
+        <span class="lf-level-name">Moderate concern</span>
+        <span class="lf-level-tag">Human review required</span>
+      </div>
+      <p class="lf-summary">Overall pattern review indicates moderate concern. Human review is recommended for context-aware interpretation.</p>
+    </div>
+
+    <div class="lf-block">
+      <h3>Provenance</h3>
+      <dl class="lf-prov" id="a-prov"><div><dt>Source file</dt><dd>whatsapp-export-2026-02-18.txt</dd></div><div><dt>Received</dt><dd>18 Feb 2026, 08:57</dd></div><div><dt>Analysis run</dt><dd>run-9f2c41d8</dd></div><div><dt>Engine version</dt><dd>TAS-v1.1</dd></div></dl>
+    </div>
+
+    <div class="lf-block">
+      <h3>Patterns identified &middot; 6 cited excerpts</h3>
+      <div class="lf-group"><div class="lf-group-name" id="a-group">Pressure or obligation language<span class="lf-group-count">4</span></div><p class="lf-group-desc">Language that may apply guilt, obligation, shame, or responsibility pressure.</p><ul class="lf-quotes"><li><div class="lf-quote" id="a-quote">&ldquo;I have never felt this connected to anyone&rdquo;</div><div class="lf-quote-meta"><span>Contact (unverified)</span><span>11 Feb 2026, 20:14</span><span>message <code>m01</code></span></div></li><li><div class="lf-quote">&ldquo;If you actually cared about me you would not be making this so difficult&rdquo;</div><div class="lf-quote-meta"><span>Contact (unverified)</span><span>16 Feb 2026, 03:02</span><span>message <code>m06</code></span></div></li><li><div class="lf-quote">&ldquo;I need you to send 4,000 now or I lose the whole position&rdquo;</div><div class="lf-quote-meta"><span>Contact (unverified)</span><span>18 Feb 2026, 04:41</span><span>message <code>m07</code></span></div></li><li><div class="lf-quote">&ldquo;There is no time to think about it&rdquo;</div><div class="lf-quote-meta" id="a-meta"><span>Contact (unverified)</span><span>18 Feb 2026, 04:41</span><span>message <code>m07</code></span></div></li></ul></div><div class="lf-group"><div class="lf-group-name">Restriction or separation language<span class="lf-group-count">1</span></div><p class="lf-group-desc">Language suggesting isolation, separation, access limits, or control-like restriction.</p><ul class="lf-quotes"><li><div class="lf-quote">&ldquo;Please don&#x27;t tell your friends about us yet&rdquo;</div><div class="lf-quote-meta"><span>Contact (unverified)</span><span>14 Feb 2026, 01:12</span><span>message <code>m04</code></span></div></li></ul></div><div class="lf-group"><div class="lf-group-name">Monitoring or compliance pressure<span class="lf-group-count">1</span></div><p class="lf-group-desc">Language emphasizing surveillance, proof demands, tracking, or compliance checks.</p><ul class="lf-quotes"><li><div class="lf-quote">&ldquo;I run a private commodities desk in Geneva&rdquo;</div><div class="lf-quote-meta"><span>Contact (unverified)</span><span>12 Feb 2026, 23:47</span><span>message <code>m03</code></span></div></li></ul></div>
+    </div>
+
+    <div class="lf-block">
+      <h3>Suggested next steps</h3>
+      <ol class="lf-steps" id="a-steps"><li>Pause escalation and use calm, non-confrontational communication.</li><li>Move sensitive decisions to a supervised or documented channel.</li></ol>
+    </div>
+
+    <div class="lf-block" id="a-limits">
+      <h3>Limitations &amp; disclaimer</h3>
+      <ul class="lf-limits"><li>This summary is generated from submitted content and may miss context outside the provided material.</li><li>Detected patterns are communication indicators, not factual findings or intent determinations.</li></ul>
+      <p class="lf-disclaimer">Lin is decision-support software. It does not provide legal advice, medical advice, mental health advice, diagnoses, predictions, emergency support, or automated determinations.</p>
+    </div>
+  </div>
+</article>
+</div>
+
+  <footer>
+    <p>Sample content is synthetic and does not describe any real person or conversation.
+    LinForensics is decision-support software. It does not provide legal advice, medical advice,
+    mental health advice, diagnoses, predictions, emergency support or automated determinations.</p>
+  </footer>
+</div>
+</body>
+</html>
